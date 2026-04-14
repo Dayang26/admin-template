@@ -30,3 +30,7 @@ def create_access_token(subject: str | Any, expires_delta: timedelta | None = No
 
 def get_password_hash(password: str) -> str:
     return password_hash.hash(password)
+
+
+def verify_password(plain_password: str, hashed_password: str) -> tuple[bool, str | None]:
+    return password_hash.verify_and_update(plain_password, hashed_password)

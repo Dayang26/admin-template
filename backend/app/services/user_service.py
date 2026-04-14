@@ -1,7 +1,13 @@
 from app.core.security import get_password_hash
 from app.models.db import User
 from app.schemas.user import UserCreate
-from sqlmodel import Session
+from sqlmodel import Session, select
+
+
+def get_user_by_email(*, session: Session, email: str) -> User | None:
+    statement = select(User).where(User.email == email)
+    session_user = session.exec(statement).first()
+    return session_user
 
 
 def create_user(*, session: Session, user_create: UserCreate) -> User:

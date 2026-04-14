@@ -1,9 +1,13 @@
+from contextlib import asynccontextmanager
+
 from starlette.middleware.cors import CORSMiddleware
 
 from app.api.main import api_router
 from app.core.config import settings
+from app.core.db import engine, init_db
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
+from sqlmodel import Session
 
 
 def custom_generate_unique_id(route: APIRoute) -> str:
@@ -13,11 +17,18 @@ def custom_generate_unique_id(route: APIRoute) -> str:
 
 
 # SENTRY_DSN
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    with Session(engine) as session:
+        init_db(session)
+    yield
+
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
     generate_unique_id_function=custom_generate_unique_id,
+    lifespan=lifespan,
 )
 
 if settings.all_cors_origins:

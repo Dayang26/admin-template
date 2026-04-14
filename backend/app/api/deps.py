@@ -1,18 +1,18 @@
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 
 import jwt
 
 from app.core import security
 from app.core.config import settings
 from app.core.db import engine
-from app.models.db import User
+from app.models.db import Permission, Role, RolePermission, User, UserRole
 from app.models.Token import TokenPayload
 from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from jwt import InvalidTokenError
 from typing import Annotated
 from pydantic import ValidationError
-from sqlmodel import Session
+from sqlmodel import Session, select
 from starlette import status
 
 reusable_oauth2 = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/login/access-token")
@@ -45,7 +45,29 @@ def get_current_user(session: SessionDep, token: TokenDep) -> User:
 CurrentUser = Annotated[User, Depends(get_current_user)]
 
 
-def get_current_active_superuser(current_user: CurrentUser) -> User:
-    if not current_user.is_superuser:
-        raise HTTPException(status_code=403, detail="The user doesn't have enough rights to access")
-    return current_user
+SUPERADMIN_ROLE_NAME = "superadmin"
+
+
+def require_permission(resource: str, action: str) -> Callable[[SessionDep, CurrentUser], User]:
+    def checker(session: SessionDep, current_user: CurrentUser) -> User:
+        has_superadmin_role = session.exec(select(Role.id).join(UserRole, UserRole.role_id == Role.id).where(UserRole.user_id == current_user.id, Role.name == SUPERADMIN_ROLE_NAME)).first()
+        if has_superadmin_role:
+            return current_user
+
+        permission_match = session.exec(
+            select(Permission.id)
+            .join(RolePermission, RolePermission.permission_id == Permission.id)
+            .join(Role, Role.id == RolePermission.role_id)
+            .join(UserRole, UserRole.role_id == Role.id)
+            .where(
+                UserRole.user_id == current_user.id,
+                Permission.resource == resource,
+                Permission.action == action,
+            )
+        ).first()
+
+        if not permission_match:
+            raise HTTPException(status_code=403, detail="Insufficient permissions")
+        return current_user
+
+    return checker
