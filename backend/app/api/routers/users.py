@@ -11,4 +11,3 @@ router = APIRouter(prefix="/users", tags=["users"])
 def create_user(*, session: SessionDep, user_in: UserCreate) -> UserPublic:
     user = UserServices.create_user(session=session, user_create=user_in)
     return user
-
