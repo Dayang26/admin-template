@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
 from typing_extensions import Annotated
 
-from backend.app.api.deps import SessionDep
+from app.api.deps import SessionDep
 
 router = APIRouter(tags=["login"])
 
