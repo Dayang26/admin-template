@@ -18,3 +18,8 @@ class UserCreate(UserBase):
 class UserPublic(UserBase):
     id: uuid.UUID
     created_at: datetime
+
+
+class UsersPublic(SQLModel):
+    data: list[UserPublic]
+    count: int

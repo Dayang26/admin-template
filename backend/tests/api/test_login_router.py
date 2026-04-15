@@ -3,7 +3,7 @@ from types import SimpleNamespace
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app.api import deps
+import app.deps as deps
 from app.api.routers import login as login_router
 
 

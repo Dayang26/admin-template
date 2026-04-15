@@ -7,6 +7,7 @@ from app.core.config import settings
 from app.core.db import engine, init_db
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
+from fastapi_pagination import add_pagination
 from sqlmodel import Session
 
 
@@ -41,6 +42,7 @@ if settings.all_cors_origins:
     )
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
+add_pagination(app)
 
 
 @app.get("/")
