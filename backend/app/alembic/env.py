@@ -32,6 +32,10 @@ target_metadata = SQLModel.metadata
 
 
 def get_url():
+    # 优先使用通过 set_main_option 设置的 URL（例如测试环境），否则用 settings
+    url = config.get_main_option("sqlalchemy.url")
+    if url and url != "driver://user:pass@localhost/dbname":
+        return url
     return str(settings.SQLALCHEMY_DATABASE_URI)
 
 
