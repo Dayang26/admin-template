@@ -1,8 +1,9 @@
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING
 
-from app.models.db.base import TimestampMixin, UUIDPrimaryKeyMixin
 from pydantic import EmailStr
 from sqlmodel import Field, Relationship, SQLModel
+
+from app.models.db.base import TimestampMixin, UUIDPrimaryKeyMixin
 
 if TYPE_CHECKING:
     from app.models.db.userRole import UserRole
@@ -15,4 +16,4 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, SQLModel, table=True):
     is_active: bool = True
     full_name: str | None = Field(default=None, max_length=255)
     hashed_password: str
-    user_roles: List["UserRole"] = Relationship(back_populates="user")
+    user_roles: list["UserRole"] = Relationship(back_populates="user")

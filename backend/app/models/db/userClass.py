@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING
 
 from sqlmodel import Field, Relationship
 
@@ -12,6 +12,6 @@ class Class(UUIDPrimaryKeyMixin, TimestampMixin, table=True):
     __tablename__ = "t_class"
 
     name: str = Field(max_length=100)
-    description: Optional[str] = Field(default=None, max_length=500)
+    description: str | None = Field(default=None, max_length=500)
 
-    user_roles: List["UserRole"] = Relationship(back_populates="class_")
+    user_roles: list["UserRole"] = Relationship(back_populates="class_")

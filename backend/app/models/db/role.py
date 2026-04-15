@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING
 
 from sqlmodel import Field, Relationship
 
@@ -13,7 +13,7 @@ class Role(UUIDPrimaryKeyMixin, table=True):
     __tablename__ = "t_role"
 
     name: str = Field(unique=True, max_length=50)  # superuser / teacher / student
-    description: Optional[str] = Field(default=None, max_length=255)
+    description: str | None = Field(default=None, max_length=255)
 
-    user_roles: List["UserRole"] = Relationship(back_populates="role")
-    role_permissions: List["RolePermission"] = Relationship(back_populates="role")
+    user_roles: list["UserRole"] = Relationship(back_populates="role")
+    role_permissions: list["RolePermission"] = Relationship(back_populates="role")

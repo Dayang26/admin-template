@@ -6,6 +6,7 @@ from sqlmodel import Session
 from app.core.config import settings
 from app.models.db import Role, User
 from app.schemas import UserPublic
+from tests.conftest import assert_error, assert_success
 
 
 #### get_users #### start
@@ -27,20 +28,19 @@ def test_get_users_superuser(client: TestClient, superuser_token_headers: dict[s
         f"{settings.API_V1_STR}/admin/users/",
         headers=superuser_token_headers,
     )
-    assert response.status_code == 200
 
-    content = response.json()
-    assert "items" in content
-    assert "total" in content
-    assert "page" in content
-    assert "size" in content
-    assert "pages" in content
-    assert isinstance(content["items"], list)
+    data = assert_success(response)
+    assert "items" in data
+    assert "total" in data
+    assert "page" in data
+    assert "size" in data
+    assert "pages" in data
+    assert isinstance(data["items"], list)
 
     # 总数应包括超级用户和我们刚刚创建的2个用户
-    assert content["total"] >= 3
+    assert data["total"] >= 3
 
-    items = content["items"]
+    items = data["items"]
     # 列表中的第一项应该是最新创建的用户 (user_3)
     assert items[0]["email"] == user_3.email
 
@@ -62,19 +62,17 @@ def test_get_users_pagination(client: TestClient, superuser_token_headers: dict[
 
     # 获取第1页，每页5条
     response_page1 = client.get(f"{settings.API_V1_STR}/admin/users/?page=1&size=5", headers=superuser_token_headers)
-    assert response_page1.status_code == 200
-    content_page1 = response_page1.json()
-    assert content_page1["page"] == 1
-    assert content_page1["size"] == 5
-    assert len(content_page1["items"]) == 5
-    assert content_page1["total"] >= 6
+    data_page1 = assert_success(response_page1)
+    assert data_page1["page"] == 1
+    assert data_page1["size"] == 5
+    assert len(data_page1["items"]) == 5
+    assert data_page1["total"] >= 6
 
     # 获取第2页，每页5条
     response_page2 = client.get(f"{settings.API_V1_STR}/admin/users/?page=2&size=5", headers=superuser_token_headers)
-    assert response_page2.status_code == 200
-    content_page2 = response_page2.json()
-    assert content_page2["page"] == 2
-    assert len(content_page2["items"]) >= 1  # 第二页至少有1个用户
+    data_page2 = assert_success(response_page2)
+    assert data_page2["page"] == 2
+    assert len(data_page2["items"]) >= 1  # 第二页至少有1个用户
 
 
 def test_get_users_normal_user_forbidden(client: TestClient, normal_user_token_headers: dict[str, str]) -> None:
@@ -85,8 +83,7 @@ def test_get_users_normal_user_forbidden(client: TestClient, normal_user_token_h
         f"{settings.API_V1_STR}/admin/users/",
         headers=normal_user_token_headers,
     )
-    assert response.status_code == 403
-    assert response.json()["detail"] == "The user doesn't have enough privileges"
+    assert_error(response, 403, "The user doesn't have enough privileges")
 
 
 def test_get_users_unauthorized(client: TestClient) -> None:
@@ -94,7 +91,7 @@ def test_get_users_unauthorized(client: TestClient) -> None:
     Test that accessing the endpoint without any authentication token returns 401 Unauthorized.
     """
     response = client.get(f"{settings.API_V1_STR}/admin/users/")
-    assert response.status_code == 401
+    assert_error(response, 401)
 
 
 def test_create_user_by_admin_success(client: TestClient, superuser_token_headers: dict[str, str], session: Session) -> None:
@@ -104,11 +101,10 @@ def test_create_user_by_admin_success(client: TestClient, superuser_token_header
 
     payload = {"email": "newuser@example.com", "password": "securepassword", "full_name": "New User", "is_active": True, "roles": ["test_role"]}
     response = client.post(f"{settings.API_V1_STR}/admin/users/", headers=superuser_token_headers, json=payload)
-    assert response.status_code == 201
-    content = response.json()
-    assert content["email"] == "newuser@example.com"
-    assert "id" in content
-    assert "password" not in content
+    data = assert_success(response, 201)
+    assert data["email"] == "newuser@example.com"
+    assert "id" in data
+    assert "password" not in data
 
 
 #### get_users #### end
@@ -122,25 +118,16 @@ def test_create_user_by_admin_existing_email(client: TestClient, superuser_token
     session.add(user)
     session.commit()
 
-    payload = {
-        "email": "existing@example.com",
-        "password": "securepassword",
-        "roles": ["test_role2"]
-    }
-    response = client.post(
-        f"{settings.API_V1_STR}/admin/users/",
-        headers=superuser_token_headers,
-        json=payload
-    )
-    assert response.status_code == 400
-    assert response.json()["detail"] == "A user with this email already exists"
+    payload = {"email": "existing@example.com", "password": "securepassword", "roles": ["test_role2"]}
+    response = client.post(f"{settings.API_V1_STR}/admin/users/", headers=superuser_token_headers, json=payload)
+    assert_error(response, 400, "A user with this email already exists")
 
 
 def test_create_user_by_admin_missing_role(client: TestClient, superuser_token_headers: dict[str, str]) -> None:
     payload = {"email": "newuser2@example.com", "password": "securepassword", "roles": ["non_existent_role"]}
     response = client.post(f"{settings.API_V1_STR}/admin/users/", headers=superuser_token_headers, json=payload)
     assert response.status_code == 400
-    assert "Role(s) not found:" in response.json()["detail"]
+    assert "Role(s) not found:" in response.json()["message"]
 
 
 def test_create_user_by_admin_assign_superuser(client: TestClient, superuser_token_headers: dict[str, str], session: Session) -> None:
@@ -148,20 +135,19 @@ def test_create_user_by_admin_assign_superuser(client: TestClient, superuser_tok
 
     payload = {"email": "newuser3@example.com", "password": "securepassword", "roles": ["superuser"]}
     response = client.post(f"{settings.API_V1_STR}/admin/users/", headers=superuser_token_headers, json=payload)
-    assert response.status_code == 400
-    assert response.json()["detail"] == "Cannot assign the 'superuser' role"
+    assert_error(response, 400, "Cannot assign the 'superuser' role")
 
 
 def test_create_user_by_admin_normal_user_forbidden(client: TestClient, normal_user_token_headers: dict[str, str]) -> None:
     payload = {"email": "newuser4@example.com", "password": "securepassword", "roles": ["test_role"]}
     response = client.post(f"{settings.API_V1_STR}/admin/users/", headers=normal_user_token_headers, json=payload)
-    assert response.status_code == 403
+    assert_error(response, 403)
 
 
 def test_create_user_by_admin_unauthorized(client: TestClient) -> None:
     payload = {"email": "newuser5@example.com", "password": "securepassword", "roles": ["test_role"]}
     response = client.post(f"{settings.API_V1_STR}/admin/users/", json=payload)
-    assert response.status_code == 401
+    assert_error(response, 401)
 
 
 #### create_user_by_admin #### end
@@ -178,16 +164,11 @@ def test_update_user_by_admin_success(client: TestClient, superuser_token_header
 
     # Update user
     payload = {"full_name": "Updated Name", "is_active": False}
-    response = client.patch(
-        f"{settings.API_V1_STR}/admin/users/{user.id}",
-        headers=superuser_token_headers,
-        json=payload
-    )
-    assert response.status_code == 200
-    content = response.json()
-    assert content["full_name"] == "Updated Name"
-    assert content["is_active"] is False
-    assert content["email"] == "update_test@example.com"
+    response = client.patch(f"{settings.API_V1_STR}/admin/users/{user.id}", headers=superuser_token_headers, json=payload)
+    data = assert_success(response)
+    assert data["full_name"] == "Updated Name"
+    assert data["is_active"] is False
+    assert data["email"] == "update_test@example.com"
 
 
 def test_update_user_by_admin_password(client: TestClient, superuser_token_headers: dict[str, str], session: Session) -> None:
@@ -202,16 +183,13 @@ def test_update_user_by_admin_password(client: TestClient, superuser_token_heade
 
     # Update password
     payload = {"password": "newsecurepassword"}
-    response = client.patch(
-        f"{settings.API_V1_STR}/admin/users/{user.id}",
-        headers=superuser_token_headers,
-        json=payload
-    )
-    assert response.status_code == 200
+    response = client.patch(f"{settings.API_V1_STR}/admin/users/{user.id}", headers=superuser_token_headers, json=payload)
+    assert_success(response)
 
     # Verify password was updated
     session.refresh(user)
     from app.core.security import verify_password
+
     assert verify_password("newsecurepassword", user.hashed_password)
 
 
@@ -242,12 +220,8 @@ def test_update_user_by_admin_replace_roles(client: TestClient, superuser_token_
 
     # Replace roles: remove teacher, add student
     payload = {"roles": ["role_student"]}
-    response = client.patch(
-        f"{settings.API_V1_STR}/admin/users/{user.id}",
-        headers=superuser_token_headers,
-        json=payload
-    )
-    assert response.status_code == 200
+    response = client.patch(f"{settings.API_V1_STR}/admin/users/{user.id}", headers=superuser_token_headers, json=payload)
+    assert_success(response)
 
     # Verify old role is removed and new role is added
     statement = select(UserRole).where(UserRole.user_id == user.id)
@@ -278,13 +252,8 @@ def test_update_user_by_admin_superuser_forbidden(client: TestClient, superuser_
 
     # Try to modify the other superuser
     payload = {"full_name": "Hacked Name"}
-    response = client.patch(
-        f"{settings.API_V1_STR}/admin/users/{target_user.id}",
-        headers=superuser_token_headers,
-        json=payload
-    )
-    assert response.status_code == 403
-    assert response.json()["detail"] == "Cannot modify information of other superusers"
+    response = client.patch(f"{settings.API_V1_STR}/admin/users/{target_user.id}", headers=superuser_token_headers, json=payload)
+    assert_error(response, 403, "Cannot modify information of other superusers")
 
 
 def test_update_user_by_admin_self_allowed(client: TestClient, superuser_token_headers: dict[str, str], session: Session) -> None:
@@ -303,17 +272,14 @@ def test_update_user_by_admin_self_allowed(client: TestClient, superuser_token_h
     token = superuser_token_headers["Authorization"].replace("Bearer ", "")
     payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
     from app.models.db import User
+
     current_user = session.get(User, payload["sub"])
 
     # Update own information
     payload = {"full_name": "My Updated Name"}
-    response = client.patch(
-        f"{settings.API_V1_STR}/admin/users/{current_user.id}",
-        headers=superuser_token_headers,
-        json=payload
-    )
-    assert response.status_code == 200
-    assert response.json()["full_name"] == "My Updated Name"
+    response = client.patch(f"{settings.API_V1_STR}/admin/users/{current_user.id}", headers=superuser_token_headers, json=payload)
+    data = assert_success(response)
+    assert data["full_name"] == "My Updated Name"
 
 
 def test_update_user_by_admin_assign_superuser_forbidden(client: TestClient, superuser_token_headers: dict[str, str], session: Session) -> None:
@@ -327,27 +293,18 @@ def test_update_user_by_admin_assign_superuser_forbidden(client: TestClient, sup
 
     # Try to assign superuser role
     payload = {"roles": ["superuser"]}
-    response = client.patch(
-        f"{settings.API_V1_STR}/admin/users/{user.id}",
-        headers=superuser_token_headers,
-        json=payload
-    )
-    assert response.status_code == 400
-    assert response.json()["detail"] == "Cannot assign the 'superuser' role"
+    response = client.patch(f"{settings.API_V1_STR}/admin/users/{user.id}", headers=superuser_token_headers, json=payload)
+    assert_error(response, 400, "Cannot assign the 'superuser' role")
 
 
 def test_update_user_by_admin_not_found(client: TestClient, superuser_token_headers: dict[str, str]) -> None:
     """Test updating a non-existent user returns 404."""
     import uuid
+
     fake_id = uuid.uuid4()
     payload = {"full_name": "Test"}
-    response = client.patch(
-        f"{settings.API_V1_STR}/admin/users/{fake_id}",
-        headers=superuser_token_headers,
-        json=payload
-    )
-    assert response.status_code == 404
-    assert response.json()["detail"] == "User not found"
+    response = client.patch(f"{settings.API_V1_STR}/admin/users/{fake_id}", headers=superuser_token_headers, json=payload)
+    assert_error(response, 404, "User not found")
 
 
 def test_update_user_by_admin_missing_role(client: TestClient, superuser_token_headers: dict[str, str], session: Session) -> None:
@@ -362,13 +319,9 @@ def test_update_user_by_admin_missing_role(client: TestClient, superuser_token_h
 
     # Try to assign non-existent role
     payload = {"roles": ["non_existent_role_xyz"]}
-    response = client.patch(
-        f"{settings.API_V1_STR}/admin/users/{user.id}",
-        headers=superuser_token_headers,
-        json=payload
-    )
+    response = client.patch(f"{settings.API_V1_STR}/admin/users/{user.id}", headers=superuser_token_headers, json=payload)
     assert response.status_code == 400
-    assert "Role(s) not found:" in response.json()["detail"]
+    assert "Role(s) not found:" in response.json()["message"]
 
 
 def test_update_user_by_admin_normal_user_forbidden(client: TestClient, normal_user_token_headers: dict[str, str], session: Session) -> None:
@@ -379,49 +332,33 @@ def test_update_user_by_admin_normal_user_forbidden(client: TestClient, normal_u
     session.refresh(user)
 
     payload = {"full_name": "Hacker"}
-    response = client.patch(
-        f"{settings.API_V1_STR}/admin/users/{user.id}",
-        headers=normal_user_token_headers,
-        json=payload
-    )
-    assert response.status_code == 403
+    response = client.patch(f"{settings.API_V1_STR}/admin/users/{user.id}", headers=normal_user_token_headers, json=payload)
+    assert_error(response, 403)
 
 
 def test_update_user_by_admin_unauthorized(client: TestClient) -> None:
     """Test that unauthorized access returns 401."""
     import uuid
+
     fake_id = uuid.uuid4()
     payload = {"full_name": "Hacker"}
-    response = client.patch(
-        f"{settings.API_V1_STR}/admin/users/{fake_id}",
-        json=payload
-    )
-    assert response.status_code == 401
+    response = client.patch(f"{settings.API_V1_STR}/admin/users/{fake_id}", json=payload)
+    assert_error(response, 401)
 
 
 def test_update_user_by_admin_partial_update(client: TestClient, superuser_token_headers: dict[str, str], session: Session) -> None:
     """Test partial update (only one field updated, others remain unchanged)."""
-    user = User(
-        email="partial_update@example.com",
-        hashed_password="password123",
-        full_name="Original Name",
-        is_active=False
-    )
+    user = User(email="partial_update@example.com", hashed_password="password123", full_name="Original Name", is_active=False)
     session.add(user)
     session.commit()
     session.refresh(user)
 
     # Only updating is_active
     payload = {"is_active": True}
-    response = client.patch(
-        f"{settings.API_V1_STR}/admin/users/{user.id}",
-        headers=superuser_token_headers,
-        json=payload
-    )
-    assert response.status_code == 200
-    content = response.json()
-    assert content["is_active"] is True
-    assert content["full_name"] == "Original Name"
+    response = client.patch(f"{settings.API_V1_STR}/admin/users/{user.id}", headers=superuser_token_headers, json=payload)
+    data = assert_success(response)
+    assert data["is_active"] is True
+    assert data["full_name"] == "Original Name"
 
 
 #### update_user_by_admin #### end

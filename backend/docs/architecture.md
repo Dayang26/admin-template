@@ -15,15 +15,16 @@
 5. [数据库模型](#5-数据库模型)
 6. [RBAC 权限系统](#6-rbac-权限系统)
 7. [API 路由](#7-api-路由)
-8. [认证与安全](#8-认证与安全)
-9. [依赖注入](#9-依赖注入)
-10. [服务层](#10-服务层)
-11. [Schema 定义](#11-schema-定义)
-12. [数据库迁移](#12-数据库迁移)
-13. [配置管理](#13-配置管理)
-14. [测试架构](#14-测试架构)
-15. [启动流程](#15-启动流程)
-16. [待完善功能](#16-待完善功能)
+8. [统一响应结构](#8-统一响应结构)
+9. [认证与安全](#9-认证与安全)
+10. [依赖注入](#10-依赖注入)
+11. [服务层](#11-服务层)
+12. [Schema 定义](#12-schema-定义)
+13. [数据库迁移](#13-数据库迁移)
+14. [配置管理](#14-配置管理)
+15. [测试架构](#15-测试架构)
+16. [启动流程](#16-启动流程)
+17. [待完善功能](#17-待完善功能)
 
 ---
 
@@ -36,6 +37,7 @@
 - 班级维度的细粒度权限管理
 - 超级管理员用户管理
 - 分页查询支持
+- 统一 API 响应结构（中间件自动包装）
 
 项目采用清晰的分层架构，将路由、业务逻辑、数据访问、模型定义各自分离，具备良好的可扩展性。
 
@@ -85,6 +87,9 @@ backend/
 │   │   ├── auth.py               # 认证依赖
 │   │   ├── db.py                 # 数据库会话依赖
 │   │   └── permission.py         # 权限检查依赖
+│   ├── middleware/
+│   │   ├── __init__.py
+│   │   └── response.py           # 统一响应包装中间件
 │   ├── models/
 │   │   ├── Token.py              # JWT Payload 模型
 │   │   └── db/
@@ -96,6 +101,7 @@ backend/
 │   │       ├── rolePermission.py # 角色-权限关联表
 │   │       └── userClass.py      # 班级表
 │   ├── schemas/
+│   │   ├── response.py           # 统一响应泛型模型 ApiResp[T]
 │   │   ├── token.py              # Token 响应 Schema
 │   │   └── user.py               # 用户 Schema
 │   └── services/
@@ -106,6 +112,7 @@ backend/
 │   ├── api/
 │   │   ├── login/                # 登录接口测试
 │   │   └── admin/                # 管理员接口测试
+│   ├── core/                     # 核心模块测试
 │   └── services/
 │       └── test_login_service.py # 服务层单元测试
 ├── docs/                         # 项目文档
@@ -120,6 +127,15 @@ backend/
 ```
 ┌─────────────────────────────────────────┐
 │              HTTP 请求                   │
+└──────────────────┬──────────────────────┘
+                   │
+┌──────────────────▼──────────────────────┐
+│     CORSMiddleware（跨域处理）            │
+└──────────────────┬──────────────────────┘
+                   │
+┌──────────────────▼──────────────────────┐
+│  UnifiedResponseMiddleware（统一响应包装） │
+│  + 异常处理器（HTTPException / 422 / 500）│
 └──────────────────┬──────────────────────┘
                    │
 ┌──────────────────▼──────────────────────┐
@@ -142,14 +158,16 @@ backend/
 └─────────────────────────────────────────┘
 ```
 
-横切关注点（通过 FastAPI 依赖注入）：
+横切关注点（通过 FastAPI 依赖注入 + 中间件）：
 
+- `middleware/response.py` → 统一响应包装
 - `deps/auth.py` → 身份认证
 - `deps/db.py` → 数据库会话
 - `deps/permission.py` → 权限检查
 
 每一层职责清晰：
 
+- **中间件层**：统一响应包装、异常处理、CORS 等横切逻辑
 - **路由层**：处理 HTTP 请求/响应，参数校验，调用服务层
 - **服务层**：封装业务逻辑，不直接暴露给 HTTP 层
 - **模型层**：SQLModel 表定义，同时作为 ORM 实体和 Pydantic 模型
@@ -219,8 +237,8 @@ class_id  FK → t_class.id（可为 NULL）
 
 ```
 id        UUID PK
-resource  资源名，如 class / student / grade
-action    操作名，如 create / view / edit / delete
+resource  资源名，如 class / user
+action    操作名，如 create / read / update / delete
 唯一约束：(resource, action)
 ```
 
@@ -252,7 +270,7 @@ action    操作名，如 create / view / edit / delete
 # deps/permission.py
 def require_permission(resource: str, action: str):
     def checker(session, current_user):
-        # 1. 检查是否拥有 superadmin 全局角色 → 直接放行
+        # 1. 检查是否拥有 superuser 全局角色 → 直接放行
         # 2. 查询用户角色链上是否存在匹配的 Permission
         #    (resource == resource AND action == action)
         # 3. 无匹配 → 403 Insufficient permissions
@@ -261,8 +279,6 @@ def require_permission(resource: str, action: str):
 ### 6.4 超级用户（superuser）
 
 `get_current_active_superuser` 依赖专门检查用户是否拥有名为 `"superuser"` 的角色，用于保护管理员专属接口。
-
-> 注意：`deps/permission.py` 中的超级管理员角色名为 `"superadmin"`，而 `deps/auth.py` 和 `core/db.py` 中使用的是 `"superuser"`，两者存在命名不一致，需关注。
 
 ---
 
@@ -280,6 +296,7 @@ def require_permission(resource: str, action: str):
 | POST | `/api/v1/users/` | require_permission("user","create") | 创建用户（普通权限） |
 | GET | `/api/v1/admin/users/` | superuser 角色 | 分页获取用户列表 |
 | POST | `/api/v1/admin/users/` | superuser 角色 | 管理员创建用户并分配角色 |
+| PATCH | `/api/v1/admin/users/{user_id}` | superuser 角色 | 管理员更新用户信息 |
 
 ### 7.3 路由聚合（api/main.py）
 
@@ -292,23 +309,78 @@ api_router.include_router(admin_users_router) # /admin/users
 
 ### 7.4 分页响应格式
 
-管理员用户列表接口使用 `fastapi-pagination`，响应结构：
+管理员用户列表接口使用 `fastapi-pagination`，分页数据包装在统一响应的 `data` 字段内：
 
 ```json
 {
-  "items": [...],
-  "total": 100,
-  "page": 1,
-  "size": 20,
-  "pages": 5
+  "code": 200,
+  "message": "success",
+  "data": {
+    "items": [...],
+    "total": 100,
+    "page": 1,
+    "size": 20,
+    "pages": 5
+  }
 }
 ```
 
 ---
 
-## 8. 认证与安全
+## 8. 统一响应结构
 
-### 8.1 认证流程
+### 8.1 设计目标
+
+所有 API 接口（成功 & 失败）返回统一的 JSON 结构，方便前端统一处理。
+
+### 8.2 响应格式
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": { ... }
+}
+```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `code` | `int` | 与 HTTP 状态码一致 |
+| `message` | `str` | 成功时为 `"success"`，失败时为错误描述 |
+| `data` | `T \| null` | 成功时为业务数据，失败时为 `null` |
+
+### 8.3 实现机制
+
+采用**两层机制**，路由函数代码**零改动**：
+
+| 层级 | 组件 | 职责 |
+|------|------|------|
+| 层 1 | `UnifiedResponseMiddleware` | 拦截 2xx JSON 响应，包装为 `{code, message, data}` |
+| 层 2 | 异常处理器 | 覆盖 `HTTPException`、`RequestValidationError`、`Exception`，统一返回错误格式 |
+
+**关键设计：**
+
+- **自动化**：中间件自动包装，路由函数无需手动构造外层结构
+- **防双重包装**：检测 body 是否已含 `code` + `data` 键
+- **HTTP 状态码不变**：HTTP 状态码仍然语义正确，`code` 字段为冗余镜像
+- **非 JSON 透传**：非 `application/json` 响应原样返回
+
+### 8.4 Schema 定义
+
+`schemas/response.py` 提供泛型模型 `ApiResp[T]`，供类型提示使用：
+
+```python
+class ApiResp(BaseModel, Generic[T]):
+    code: int
+    message: str
+    data: T | None = None
+```
+
+---
+
+## 9. 认证与安全
+
+### 9.1 认证流程
 
 ```
 客户端 POST /login/access-token
@@ -327,7 +399,7 @@ api_router.include_router(admin_users_router) # /admin/users
     → 返回 User 对象
 ```
 
-### 8.2 密码哈希策略
+### 9.2 密码哈希策略
 
 使用 `pwdlib` 支持双算法：
 
@@ -335,11 +407,11 @@ api_router.include_router(admin_users_router) # /admin/users
 - **兼容算法**：Bcrypt（向后兼容旧哈希）
 - **自动升级**：`verify_and_update()` 在验证成功后，若哈希算法过时则自动返回新哈希，服务层检测到后立即更新数据库
 
-### 8.3 防时序攻击
+### 9.3 防时序攻击
 
 用户不存在时，仍执行一次 `verify_password(password, DUMMY_HASH)`，避免通过响应时间差枚举有效邮箱。
 
-### 8.4 JWT 配置
+### 9.4 JWT 配置
 
 | 参数 | 值 |
 |------|----|
@@ -349,11 +421,11 @@ api_router.include_router(admin_users_router) # /admin/users
 
 ---
 
-## 9. 依赖注入
+## 10. 依赖注入
 
 FastAPI 的依赖注入系统贯穿整个项目，`deps/` 目录统一管理所有可复用依赖：
 
-### 9.1 SessionDep
+### 10.1 SessionDep
 
 ```python
 # deps/db.py
@@ -362,7 +434,7 @@ SessionDep = Annotated[Session, Depends(get_db)]
 
 每个请求获得独立的 SQLModel `Session`，请求结束后自动关闭。
 
-### 9.2 CurrentUser
+### 10.2 CurrentUser
 
 ```python
 # deps/auth.py
@@ -371,16 +443,16 @@ CurrentUser = Annotated[User, Depends(get_current_user)]
 
 解析 Bearer Token，查询并返回当前用户对象。Token 无效或用户不存在时抛出 403/404。
 
-### 9.3 require_permission
+### 10.3 require_permission
 
 ```python
 # deps/permission.py
 Depends(require_permission("user", "create"))
 ```
 
-工厂函数，返回一个检查特定 resource+action 权限的依赖。superadmin 角色自动绕过权限检查。
+工厂函数，返回一个检查特定 resource+action 权限的依赖。superuser 角色自动绕过权限检查。
 
-### 9.4 get_current_active_superuser
+### 10.4 get_current_active_superuser
 
 ```python
 # deps/auth.py
@@ -391,15 +463,15 @@ Depends(get_current_active_superuser)
 
 ---
 
-## 10. 服务层
+## 11. 服务层
 
-### 10.1 login_service.py
+### 11.1 login_service.py
 
 | 函数 | 说明 |
 |------|------|
 | `authenticate(session, email, password)` | 验证邮箱+密码，返回 User 或 None；自动处理哈希升级 |
 
-### 10.2 user_service.py
+### 11.2 user_service.py
 
 | 函数 | 说明 |
 |------|------|
@@ -417,11 +489,11 @@ Depends(get_current_active_superuser)
 
 ---
 
-## 11. Schema 定义
+## 12. Schema 定义
 
 Schema 与数据库模型分离，用于 API 请求/响应的序列化与校验：
 
-### 11.1 用户 Schema（schemas/user.py）
+### 12.1 用户 Schema（schemas/user.py）
 
 ```
 UserBase          email, is_active, full_name
@@ -431,7 +503,8 @@ UserBase          email, is_active, full_name
 UsersPublic       data: list[UserPublic], count: int
 ```
 
-### 11.2 Token Schema（schemas/token.py）
+### 12.2 Token Schema（schemas/token.py）
+
 
 ```
 TokenResp     access_token: str, token_type: str = "bearer"
@@ -440,7 +513,15 @@ TokenPayload  sub: str | None
 
 ---
 
-## 12. 数据库迁移
+### 12.3 响应 Schema（schemas/response.py）
+
+```
+ApiResp[T]    code: int, message: str, data: T | None
+```
+
+---
+
+## 13. 数据库迁移
 
 使用 **Alembic** 管理数据库 Schema 版本：
 
@@ -459,7 +540,7 @@ alembic revision --autogenerate -m "描述"  # 生成新迁移
 
 ---
 
-## 13. 配置管理
+## 14. 配置管理
 
 `core/config.py` 使用 `pydantic-settings` 的 `BaseSettings`，支持从 `.env` 文件和环境变量读取配置：
 
@@ -482,9 +563,9 @@ alembic revision --autogenerate -m "描述"  # 生成新迁移
 
 ---
 
-## 14. 测试架构
+## 15. 测试架构
 
-### 14.1 测试策略
+### 15.1 测试策略
 
 项目包含两类测试：
 
@@ -493,21 +574,28 @@ alembic revision --autogenerate -m "描述"  # 生成新迁移
 | 单元测试 | `tests/services/` | 使用 monkeypatch 隔离依赖，不访问数据库 |
 | 集成测试 | `tests/api/` | 使用 TestClient + 真实数据库，测试完整请求链路 |
 
-### 14.2 测试 Fixtures（conftest.py）
+### 15.2 测试 Fixtures（conftest.py）
 
 | Fixture | 作用域 | 说明 |
 |---------|--------|------|
-| `_setup_database` | session | 创建所有表，执行 `init_db`，测试结束后删除所有表 |
+| `setup_test_database` | session | 通过 Alembic `upgrade head` 建表后执行 `init_db`（不在会话结束时删表） |
 | `session` | function | 每个测试独立 Session，测试后自动 rollback |
 | `client` | function | FastAPI TestClient，`raise_server_exceptions=False` |
 | `superuser_token_headers` | function | 超级用户 JWT 请求头 |
 | `normal_user_token_headers` | function | 普通用户（teacher 角色）JWT 请求头 |
 
-### 14.3 依赖覆盖测试
+### 15.3 测试辅助断言函数
+
+| 函数 | 说明 |
+|------|------|
+| `assert_success(response, status_code)` | 断言成功响应，验证 code/message/data，返回 data |
+| `assert_error(response, status_code, message)` | 断言错误响应，验证 code/data=null，可选验证 message |
+
+### 15.4 依赖覆盖测试
 
 通过 `app.dependency_overrides[get_db] = get_test_db` 将数据库会话替换为测试专用 Session，确保测试与生产数据库隔离。
 
-### 14.4 测试覆盖范围
+### 15.5 测试覆盖范围
 
 **登录接口（test_login_router.py）**
 
@@ -537,17 +625,20 @@ alembic revision --autogenerate -m "描述"  # 生成新迁移
 
 ---
 
-## 15. 启动流程
+## 16. 启动流程
 
 ```
 uvicorn app.main:app
 
 ├── lifespan 钩子触发
 │   └── init_db(session)
-│       ├── 检查/创建 "superuser" 角色
-│       ├── 检查/创建初始超级用户
-│       └── 检查/绑定用户-角色关联
+│       ├── 检查/创建内置角色（superuser / teacher / student）
+│       ├── 检查/创建内置权限（class/user 的 CRUD）
+│       ├── 检查/绑定角色-权限关系
+│       └── 检查/创建初始超级用户并绑定 superuser 角色
+├── 注册 UnifiedResponseMiddleware（统一响应包装）
 ├── 注册 CORS 中间件（根据配置）
+├── 注册异常处理器（HTTPException / RequestValidationError / Exception）
 ├── 挂载 api_router（前缀 /api/v1）
 ├── add_pagination(app)
 └── 注册健康检查接口 GET /
@@ -557,7 +648,7 @@ uvicorn app.main:app
 
 ---
 
-## 16. 待完善功能
+## 17. 待完善功能
 
 根据代码中的 `# todo` 注释，以下功能尚未实现：
 

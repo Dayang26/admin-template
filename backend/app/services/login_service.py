@@ -4,7 +4,6 @@ from app.core.security import verify_password
 from app.models.db import User
 from app.services.user_service import get_user_by_email
 
-
 DUMMY_HASH = "$argon2id$v=19$m=65536,t=3,p=4$MjQyZWE1MzBjYjJlZTI0Yw$YTU4NGM5ZTZmYjE2NzZlZjY0ZWY3ZGRkY2U2OWFjNjk"
 
 

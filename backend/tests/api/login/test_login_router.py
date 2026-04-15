@@ -1,6 +1,8 @@
 from types import SimpleNamespace
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, HTTPException
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
 
 import app.deps as deps
@@ -12,14 +14,28 @@ class DummySession:
 
 
 def _build_app() -> FastAPI:
-    app = FastAPI()
-    app.include_router(login_router.router, prefix="/api/v1")
+    test_app = FastAPI()
+    test_app.include_router(login_router.router, prefix="/api/v1")
+
+    @test_app.exception_handler(HTTPException)
+    async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"code": exc.status_code, "message": exc.detail, "data": None},
+        )
+
+    @test_app.exception_handler(RequestValidationError)
+    async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+        return JSONResponse(
+            status_code=422,
+            content={"code": 422, "message": "Validation Error", "data": None},
+        )
 
     def override_get_db():
         yield DummySession()
 
-    app.dependency_overrides[deps.get_db] = override_get_db
-    return app
+    test_app.dependency_overrides[deps.get_db] = override_get_db
+    return test_app
 
 
 def test_login_access_token_success(monkeypatch):
@@ -49,7 +65,9 @@ def test_login_access_token_success(monkeypatch):
     )
 
     assert resp.status_code == 200
-    assert resp.json() == {"access_token": "mocked.jwt.token", "token_type": "bearer"}
+    body = resp.json()
+    assert body["access_token"] == "mocked.jwt.token"
+    assert body["token_type"] == "bearer"
     assert called["email"] == "admin@example.com"
     assert called["password"] == "secret123"
     assert called["session_type"] == "DummySession"
@@ -69,7 +87,10 @@ def test_login_access_token_wrong_credentials(monkeypatch):
     )
 
     assert resp.status_code == 400
-    assert resp.json() == {"detail": "Incorrect email or password"}
+    body = resp.json()
+    assert body["code"] == 400
+    assert body["message"] == "Incorrect email or password"
+    assert body["data"] is None
 
 
 def test_login_access_token_inactive_user(monkeypatch):
@@ -85,7 +106,10 @@ def test_login_access_token_inactive_user(monkeypatch):
     )
 
     assert resp.status_code == 400
-    assert resp.json() == {"detail": "Inactive user"}
+    body = resp.json()
+    assert body["code"] == 400
+    assert body["message"] == "Inactive user"
+    assert body["data"] is None
 
 
 def test_login_access_token_validation_error_when_form_missing():
@@ -95,3 +119,7 @@ def test_login_access_token_validation_error_when_form_missing():
     resp = client.post("/api/v1/login/access-token", data={"username": "admin@example.com"})
 
     assert resp.status_code == 422
+    body = resp.json()
+    assert body["code"] == 422
+    assert body["message"] == "Validation Error"
+    assert body["data"] is None

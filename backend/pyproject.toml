@@ -23,10 +23,23 @@ url = "https://mirrors.aliyun.com/pypi/simple"
 
 [dependency-groups]
 dev = [
+    "coverage>=7.13.5",
+    "mypy>=1.20.1",
+    "prek>=0.3.9",
     "pytest>=9.0.3",
     "ruff>=0.15.10",
+    "ty>=0.0.30",
 ]
 
+
+
+[tool.mypy]
+strict = true
+exclude = ["venv", ".venv", "alembic"]
+
+[tool.ruff]
+target-version = "py310"
+exclude = ["alembic"]
 
 
 [tool.ruff]
@@ -34,5 +47,40 @@ line-length = 200
 exclude = [".venv", "rag/svr/discord_svr.py"]
 
 [tool.ruff.lint]
-extend-select = ["ASYNC", "ASYNC1"]
-ignore = ["E402"]
+select = [
+    "E", # pycodestyle errors
+    "W", # pycodestyle warnings
+    "F", # pyflakes
+    "I", # isort
+    "B", # flake8-bugbear
+    "C4", # flake8-comprehensions
+    "UP", # pyupgrade
+    "ARG001", # unused arguments in functions
+    "T201", # print statements are not allowed
+]
+
+
+ignore = [
+    "E501", # line too long, handled by black
+    "B008", # do not perform function calls in argument defaults
+    "W191", # indentation contains tabs
+    "B904", # Allow raising exceptions without from e, for HTTPException
+]
+
+[tool.ruff.lint.pyupgrade]
+# Preserve types, even if a file imports `from __future__ import annotations`.
+keep-runtime-typing = true
+
+[tool.coverage.run]
+source = ["app"]
+dynamic_context = "test_function"
+
+[tool.coverage.report]
+show_missing = true
+sort = "-Cover"
+
+[tool.coverage.html]
+show_contexts = true
+
+[tool.ty.terminal]
+error-on-warning = true

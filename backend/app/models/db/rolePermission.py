@@ -1,8 +1,9 @@
 from typing import TYPE_CHECKING, Optional
 from uuid import UUID
 
-from app.models.db.base import UUIDPrimaryKeyMixin
 from sqlmodel import Field, Relationship
+
+from app.models.db.base import UUIDPrimaryKeyMixin
 
 if TYPE_CHECKING:
     from app.models.db.permission import Permission

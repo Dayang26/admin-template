@@ -87,11 +87,7 @@ def update_user_by_admin(
 
     # 2. Check superuser mutual exclusion
     # Query target user's current roles
-    statement = (
-        select(Role.name)
-        .join(UserRole, UserRole.role_id == Role.id)
-        .where(UserRole.user_id == target_user_id)
-    )
+    statement = select(Role.name).join(UserRole, UserRole.role_id == Role.id).where(UserRole.user_id == target_user_id)
     target_roles = set(session.exec(statement).all())
 
     if SUPERUSER_ROLE_NAME in target_roles and target_user_id != current_user_id:

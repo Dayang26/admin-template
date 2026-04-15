@@ -152,3 +152,23 @@ def superuser_token_headers(session: Session) -> dict[str, str]:
 @pytest.fixture()
 def normal_user_token_headers(session: Session) -> dict[str, str]:
     return _get_normal_user_token_headers(session)
+
+
+def assert_success(response, status_code: int = 200) -> dict:
+    """断言响应为成功，返回 data 字段内容。"""
+    assert response.status_code == status_code
+    body = response.json()
+    assert body["code"] == status_code
+    assert body["message"] == "success"
+    assert body["data"] is not None
+    return body["data"]
+
+
+def assert_error(response, status_code: int, message: str | None = None) -> None:
+    """断言响应为错误，可选校验 message。"""
+    assert response.status_code == status_code
+    body = response.json()
+    assert body["code"] == status_code
+    assert body["data"] is None
+    if message:
+        assert body["message"] == message
