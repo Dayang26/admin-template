@@ -5,7 +5,7 @@ from sqlmodel import Session
 
 from app.core.config import settings
 from app.models.db import Role, User
-from app.schemas import UserPublic
+from app.schemas import UserPublicResp
 from tests.conftest import assert_error, assert_success
 
 
@@ -47,7 +47,7 @@ def test_get_users_superuser(client: TestClient, superuser_token_headers: dict[s
     # 验证返回的数据符合 UserPublic 结构
     # 并且不包含密码等敏感信息
     for item in items:
-        UserPublic.model_validate(item)
+        UserPublicResp.model_validate(item)
         assert "password" not in item
         assert "hashed_password" not in item
 

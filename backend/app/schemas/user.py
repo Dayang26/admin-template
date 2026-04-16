@@ -11,22 +11,22 @@ class UserBase(SQLModel):
     full_name: str | None = Field(default=None, max_length=255)
 
 
-class UserCreate(UserBase):
+class UserCreateReq(UserBase):
     password: str = Field(min_length=8, max_length=128)
 
 
-class UserCreateByAdmin(UserBase):
+class UserCreateByAdminReq(UserBase):
     password: str = Field(min_length=8, max_length=128)
     roles: list[str] = Field(min_length=1, description="List of role names to assign")
 
 
-class UserPublic(UserBase):
+class UserPublicResp(UserBase):
     id: uuid.UUID
     created_at: datetime
 
 
-class UsersPublic(SQLModel):
-    data: list[UserPublic]
+class UsersPublicResp(SQLModel):
+    data: list[UserPublicResp]
     count: int
 
 
@@ -37,3 +37,9 @@ class UserUpdateReq(SQLModel):
     password: str | None = Field(default=None, min_length=8, max_length=128)
     is_active: bool | None = Field(default=None)
     roles: list[str] | None = Field(default=None, min_length=1, description="List of role names to assign (replace mode)")
+
+
+class UserUpdateMeReq(SQLModel):
+    """Request schema for updating own profile."""
+
+    full_name: str | None = Field(default=None, max_length=255)

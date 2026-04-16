@@ -6,7 +6,7 @@ from sqlmodel import Session, select
 
 from app.core.config import settings
 from app.models.db import Permission, Role, RolePermission, User, UserRole
-from app.schemas.user import UserCreate
+from app.schemas.user import UserCreateReq
 from app.services import user_service
 
 engine = create_engine(str(settings.SQLALCHEMY_DATABASE_URI))
@@ -105,7 +105,7 @@ def _ensure_superuser(session: Session, roles: dict[str, Role]) -> None:
     if not user:
         user = user_service.create_user(
             session=session,
-            user_create=UserCreate(
+            user_create=UserCreateReq(
                 email=settings.FIRST_SUPERUSER,
                 password=settings.FIRST_SUPERUSER_PASSWORD,
                 is_active=True,

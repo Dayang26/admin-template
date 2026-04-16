@@ -9,44 +9,49 @@ from sqlmodel import col, select
 from app.deps import SessionDep
 from app.deps.auth import CurrentUser, get_current_active_superuser
 from app.models.db import User
-from app.schemas import Response, UserCreateByAdmin, UserPublic, UserUpdateReq
+from app.schemas import (
+    Response,
+    UserCreateByAdminReq,
+    UserPublicResp,
+    UserUpdateReq,
+)
 from app.services import user_service
 
 router = APIRouter(prefix="/admin/users", tags=["admin"])
 
 
-@router.get("/", dependencies=[Depends(get_current_active_superuser)], response_model=Response[Page[UserPublic]])
+@router.get("/", dependencies=[Depends(get_current_active_superuser)], response_model=Response[Page[UserPublicResp]])
 def get_users(
     session: SessionDep,
     page: int = Query(1, ge=1, description="Page number"),
     size: int = Query(50, ge=1, le=100, description="Page size"),
-) -> Response[Page[UserPublic]]:
+) -> Response[Page[UserPublicResp]]:
     """Retrieve users with pagination."""
     statement = select(User).order_by(col(User.created_at).desc())
     page_data = paginate(
         session,
         statement,
         params=Params(page=page, size=size),
-        transformer=lambda users: [UserPublic.model_validate(user) for user in users],
+        transformer=lambda users: [UserPublicResp.model_validate(user) for user in users],
     )
     return Response.ok(data=page_data)
 
 
-@router.post("/", dependencies=[Depends(get_current_active_superuser)], response_model=Response[UserPublic], status_code=201)
-def create_user_by_admin(*, session: SessionDep, user_in: UserCreateByAdmin) -> Response[UserPublic]:
+@router.post("/", dependencies=[Depends(get_current_active_superuser)], response_model=Response[UserPublicResp], status_code=201)
+def create_user_by_admin(*, session: SessionDep, user_in: UserCreateByAdminReq) -> Response[UserPublicResp]:
     """Create a new user with role assignment. Only accessible by superusers."""
     user = user_service.create_user_with_roles(session=session, user_create=user_in)
-    return Response.ok(data=UserPublic.model_validate(user), code=201)
+    return Response.ok(data=UserPublicResp.model_validate(user), code=201)
 
 
-@router.patch("/{user_id}", dependencies=[Depends(get_current_active_superuser)], response_model=Response[UserPublic])
+@router.patch("/{user_id}", dependencies=[Depends(get_current_active_superuser)], response_model=Response[UserPublicResp])
 def update_user_by_admin(
     *,
     session: SessionDep,
     user_id: uuid.UUID,
     user_in: UserUpdateReq,
     current_user: CurrentUser,
-) -> Response[UserPublic]:
+) -> Response[UserPublicResp]:
     """Update a user's information by admin (superuser).
 
     - **full_name**: Update the user's full name
@@ -62,4 +67,4 @@ def update_user_by_admin(
         target_user_id=user_id,
         current_user_id=current_user.id,
     )
-    return Response.ok(data=UserPublic.model_validate(user))
+    return Response.ok(data=UserPublicResp.model_validate(user))

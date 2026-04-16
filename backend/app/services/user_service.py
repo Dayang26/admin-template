@@ -5,7 +5,12 @@ from sqlmodel import Session, select
 
 from app.core.security import get_password_hash
 from app.models.db import Role, User, UserRole
-from app.schemas.user import UserCreate, UserCreateByAdmin, UserUpdateReq
+from app.schemas.user import (
+    UserCreateByAdminReq,
+    UserCreateReq,
+    UserUpdateMeReq,
+    UserUpdateReq,
+)
 
 
 def get_user_by_email(*, session: Session, email: str) -> User | None:
@@ -14,7 +19,7 @@ def get_user_by_email(*, session: Session, email: str) -> User | None:
     return session_user
 
 
-def create_user(*, session: Session, user_create: UserCreate) -> User:
+def create_user(*, session: Session, user_create: UserCreateReq) -> User:
     db_obj = User.model_validate(
         user_create,
         update={"hashed_password": get_password_hash(user_create.password)},
@@ -31,7 +36,7 @@ def get_roles_by_names(*, session: Session, role_names: list[str]) -> list[Role]
     return list(session.exec(statement).all())
 
 
-def create_user_with_roles(*, session: Session, user_create: UserCreateByAdmin) -> User:
+def create_user_with_roles(*, session: Session, user_create: UserCreateByAdminReq) -> User:
     unique_roles = list(dict.fromkeys(user_create.roles))
 
     if get_user_by_email(session=session, email=user_create.email):
@@ -134,3 +139,14 @@ def update_user_by_admin(
     session.commit()
     session.refresh(target_user)
     return target_user
+
+
+def update_user_me(*, session: Session, user_update: UserUpdateMeReq, current_user: User) -> User:
+    """Update current user's own profile. Only allows updating full_name."""
+    if user_update.full_name is not None:
+        current_user.full_name = user_update.full_name
+
+    session.add(current_user)
+    session.commit()
+    session.refresh(current_user)
+    return current_user
