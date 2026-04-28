@@ -10,7 +10,7 @@ from tests.conftest import assert_error, assert_success
 
 
 #### get_users #### start
-def test_get_users_superuser(client: TestClient, superuser_token_headers: dict[str, str], session: Session) -> None:
+def test_get_users_superuser(client: TestClient, superuser_token_headers: dict[str, str], session: Session) -> None:  # noqa: ARG001
     """
     Test that a superuser can retrieve the paginated list of users,
     verifying content and sorting.
@@ -52,7 +52,7 @@ def test_get_users_superuser(client: TestClient, superuser_token_headers: dict[s
         assert "hashed_password" not in item
 
 
-def test_get_users_pagination(client: TestClient, superuser_token_headers: dict[str, str], session: Session) -> None:
+def test_get_users_pagination(client: TestClient, superuser_token_headers: dict[str, str], session: Session) -> None:  # noqa: ARG001
     """Test pagination of the users list."""
     # 创建6个用户用于分页测试
     for i in range(6):
@@ -94,7 +94,7 @@ def test_get_users_unauthorized(client: TestClient) -> None:
     assert_error(response, 401)
 
 
-def test_create_user_by_admin_success(client: TestClient, superuser_token_headers: dict[str, str], session: Session) -> None:
+def test_create_user_by_admin_success(client: TestClient, superuser_token_headers: dict[str, str], session: Session) -> None:  # noqa: ARG001
     role = Role(name="test_role", description="Test Role")
     session.add(role)
     session.commit()
@@ -111,7 +111,7 @@ def test_create_user_by_admin_success(client: TestClient, superuser_token_header
 
 
 #### create_user_by_admin #### start
-def test_create_user_by_admin_existing_email(client: TestClient, superuser_token_headers: dict[str, str], session: Session) -> None:
+def test_create_user_by_admin_existing_email(client: TestClient, superuser_token_headers: dict[str, str], session: Session) -> None:  # noqa: ARG001
     role = Role(name="test_role2", description="Test Role")
     session.add(role)
     user = User(email="existing@example.com", hashed_password="password")
@@ -130,7 +130,7 @@ def test_create_user_by_admin_missing_role(client: TestClient, superuser_token_h
     assert "Role(s) not found:" in response.json()["message"]
 
 
-def test_create_user_by_admin_assign_superuser(client: TestClient, superuser_token_headers: dict[str, str], session: Session) -> None:
+def test_create_user_by_admin_assign_superuser(client: TestClient, superuser_token_headers: dict[str, str], session: Session) -> None:  # noqa: ARG001
     # superuser role already exists from init_db, no need to create it
 
     payload = {"email": "newuser3@example.com", "password": "securepassword", "roles": ["superuser"]}
@@ -154,7 +154,7 @@ def test_create_user_by_admin_unauthorized(client: TestClient) -> None:
 
 
 #### update_user_by_admin #### start
-def test_update_user_by_admin_success(client: TestClient, superuser_token_headers: dict[str, str], session: Session) -> None:
+def test_update_user_by_admin_success(client: TestClient, superuser_token_headers: dict[str, str], session: Session) -> None:  # noqa: ARG001
     """Test updating a normal user's basic information (success)."""
     # Create a test user
     user = User(email="update_test@example.com", hashed_password="oldpassword", full_name="Old Name", is_active=True)
@@ -171,9 +171,8 @@ def test_update_user_by_admin_success(client: TestClient, superuser_token_header
     assert data["email"] == "update_test@example.com"
 
 
-def test_update_user_by_admin_password(client: TestClient, superuser_token_headers: dict[str, str], session: Session) -> None:
+def test_update_user_by_admin_password(client: TestClient, superuser_token_headers: dict[str, str], session: Session) -> None:  # noqa: ARG001
     """Test updating a user's password."""
-    from sqlmodel import select
 
     # Create a test user
     user = User(email="update_password@example.com", hashed_password="oldpassword", full_name="Test User")
@@ -193,9 +192,10 @@ def test_update_user_by_admin_password(client: TestClient, superuser_token_heade
     assert verify_password("newsecurepassword", user.hashed_password)
 
 
-def test_update_user_by_admin_replace_roles(client: TestClient, superuser_token_headers: dict[str, str], session: Session) -> None:
+def test_update_user_by_admin_replace_roles(client: TestClient, superuser_token_headers: dict[str, str], session: Session) -> None:  # noqa: ARG001
     """Test role replacement logic - old roles should be removed and new roles assigned."""
     from sqlmodel import select
+
     from app.models.db import UserRole
 
     # Create test roles
@@ -231,9 +231,10 @@ def test_update_user_by_admin_replace_roles(client: TestClient, superuser_token_
     assert role_teacher.id not in role_ids
 
 
-def test_update_user_by_admin_superuser_forbidden(client: TestClient, superuser_token_headers: dict[str, str], session: Session) -> None:
+def test_update_user_by_admin_superuser_forbidden(client: TestClient, superuser_token_headers: dict[str, str], session: Session) -> None:  # noqa: ARG001
     """Test that a superuser cannot modify another superuser's information."""
     from sqlmodel import select
+
     from app.models.db import UserRole
 
     # superuser role already exists from init_db
@@ -256,16 +257,16 @@ def test_update_user_by_admin_superuser_forbidden(client: TestClient, superuser_
     assert_error(response, 403, "Cannot modify information of other superusers")
 
 
-def test_update_user_by_admin_self_allowed(client: TestClient, superuser_token_headers: dict[str, str], session: Session) -> None:
+def test_update_user_by_admin_self_allowed(client: TestClient, superuser_token_headers: dict[str, str], session: Session) -> None:  # noqa: ARG001
     """Test that a superuser can modify their own information."""
     from sqlmodel import select
 
     # Get superuser role
-    role_superuser = session.exec(select(Role).where(Role.name == "superuser")).first()
+    _role_superuser = session.exec(select(Role).where(Role.name == "superuser")).first()
 
     # Get the current superuser (from headers)
-    from app.core.security import create_access_token
     import jwt
+
     from app.core.config import settings
 
     # Decode token to get user id
@@ -282,7 +283,7 @@ def test_update_user_by_admin_self_allowed(client: TestClient, superuser_token_h
     assert data["full_name"] == "My Updated Name"
 
 
-def test_update_user_by_admin_assign_superuser_forbidden(client: TestClient, superuser_token_headers: dict[str, str], session: Session) -> None:
+def test_update_user_by_admin_assign_superuser_forbidden(client: TestClient, superuser_token_headers: dict[str, str], session: Session) -> None:  # noqa: ARG001
     """Test that assigning superuser role is forbidden."""
 
     # Create a test user
@@ -307,9 +308,8 @@ def test_update_user_by_admin_not_found(client: TestClient, superuser_token_head
     assert_error(response, 404, "User not found")
 
 
-def test_update_user_by_admin_missing_role(client: TestClient, superuser_token_headers: dict[str, str], session: Session) -> None:
+def test_update_user_by_admin_missing_role(client: TestClient, superuser_token_headers: dict[str, str], session: Session) -> None:  # noqa: ARG001
     """Test updating user with non-existent role returns 400."""
-    from sqlmodel import select
 
     # Create a test user
     user = User(email="missing_role@example.com", hashed_password="password")
@@ -324,7 +324,7 @@ def test_update_user_by_admin_missing_role(client: TestClient, superuser_token_h
     assert "Role(s) not found:" in response.json()["message"]
 
 
-def test_update_user_by_admin_normal_user_forbidden(client: TestClient, normal_user_token_headers: dict[str, str], session: Session) -> None:
+def test_update_user_by_admin_normal_user_forbidden(client: TestClient, normal_user_token_headers: dict[str, str], session: Session) -> None:  # noqa: ARG001
     """Test that a normal user gets 403 Forbidden."""
     user = User(email="normal_forbidden@example.com", hashed_password="password")
     session.add(user)
@@ -346,7 +346,7 @@ def test_update_user_by_admin_unauthorized(client: TestClient) -> None:
     assert_error(response, 401)
 
 
-def test_update_user_by_admin_partial_update(client: TestClient, superuser_token_headers: dict[str, str], session: Session) -> None:
+def test_update_user_by_admin_partial_update(client: TestClient, superuser_token_headers: dict[str, str], session: Session) -> None:  # noqa: ARG001
     """Test partial update (only one field updated, others remain unchanged)."""
     user = User(email="partial_update@example.com", hashed_password="password123", full_name="Original Name", is_active=False)
     session.add(user)

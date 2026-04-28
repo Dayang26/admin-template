@@ -51,7 +51,7 @@ if settings.all_cors_origins:
 
 
 @app.exception_handler(HTTPException)
-async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
+async def http_exception_handler(_request: Request, exc: HTTPException) -> JSONResponse:
     """覆盖 FastAPI 默认的 HTTPException 处理器，统一包装错误响应。"""
     return JSONResponse(
         status_code=exc.status_code,
@@ -64,7 +64,7 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
 
 
 @app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+async def validation_exception_handler(_request: Request, _exc: RequestValidationError) -> JSONResponse:
     """覆盖 422 校验错误处理器。message 固定为 'Validation Error'，不暴露内部字段细节。"""
     return JSONResponse(
         status_code=422,
@@ -77,7 +77,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 
 @app.exception_handler(Exception)
-async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+async def unhandled_exception_handler(_request: Request, _exc: Exception) -> JSONResponse:
     """兜底处理器，捕获所有未处理异常，返回 500。"""
     return JSONResponse(
         status_code=500,

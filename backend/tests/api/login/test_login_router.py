@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
@@ -18,14 +18,14 @@ def _build_app() -> FastAPI:
     test_app.include_router(login_router.router, prefix="/api/v1")
 
     @test_app.exception_handler(HTTPException)
-    async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
+    async def http_exception_handler(_request: Request, exc: HTTPException) -> JSONResponse:
         return JSONResponse(
             status_code=exc.status_code,
             content={"code": exc.status_code, "message": exc.detail, "data": None},
         )
 
     @test_app.exception_handler(RequestValidationError)
-    async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    async def validation_exception_handler(_request: Request, _exc: RequestValidationError) -> JSONResponse:
         return JSONResponse(
             status_code=422,
             content={"code": 422, "message": "Validation Error", "data": None},
@@ -42,7 +42,7 @@ def test_login_access_token_success(monkeypatch):
     app = _build_app()
     client = TestClient(app)
 
-    fake_user = SimpleNamespace(id="user-123", is_active=True)
+    fake_user = SimpleNamespace(id="user-123", is_active=True, email="admin@example.com")
     called = {}
 
     def fake_authenticate(*, session, email, password):
@@ -58,6 +58,7 @@ def test_login_access_token_success(monkeypatch):
 
     monkeypatch.setattr(login_router.login_service, "authenticate", fake_authenticate)
     monkeypatch.setattr(login_router.security, "create_access_token", fake_create_access_token)
+    monkeypatch.setattr("app.api.routers.login.log_audit", lambda *args, **kwargs: None)
 
     resp = client.post(
         "/api/v1/login/access-token",
@@ -89,7 +90,7 @@ def test_login_access_token_wrong_credentials(monkeypatch):
     assert resp.status_code == 400
     body = resp.json()
     assert body["code"] == 400
-    assert body["message"] == "Incorrect email or password"
+    assert body["message"] == "邮箱或密码错误"
     assert body["data"] is None
 
 
@@ -108,7 +109,7 @@ def test_login_access_token_inactive_user(monkeypatch):
     assert resp.status_code == 400
     body = resp.json()
     assert body["code"] == 400
-    assert body["message"] == "Inactive user"
+    assert body["message"] == "该账号已被禁用"
     assert body["data"] is None
 
 

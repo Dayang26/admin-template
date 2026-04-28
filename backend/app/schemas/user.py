@@ -25,6 +25,12 @@ class UserPublicResp(UserBase):
     created_at: datetime
 
 
+class UserPublicWithRolesResp(UserPublicResp):
+    """用户列表响应，包含全局角色名"""
+
+    roles: list[str] = Field(default_factory=list)
+
+
 class UsersPublicResp(SQLModel):
     data: list[UserPublicResp]
     count: int
@@ -43,3 +49,25 @@ class UserUpdateMeReq(SQLModel):
     """Request schema for updating own profile."""
 
     full_name: str | None = Field(default=None, max_length=255)
+
+
+class UserUpdatePasswordReq(SQLModel):
+    """用户修改密码请求"""
+
+    current_password: str = Field(min_length=8, max_length=128)
+    new_password: str = Field(min_length=8, max_length=128)
+
+
+class ClassMembershipResp(SQLModel):
+    """班级成员身份"""
+
+    class_id: uuid.UUID
+    class_name: str
+    role: str  # 在该班级中的角色
+
+
+class UserDetailResp(UserPublicResp):
+    """用户详情，包含角色与班级归属"""
+
+    roles: list[str]  # 全局角色名列表
+    class_memberships: list[ClassMembershipResp]  # 班级级别的角色绑定

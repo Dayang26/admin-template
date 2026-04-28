@@ -22,3 +22,9 @@ class ClassPublicResp(ClassBase):
     id: uuid.UUID
     created_at: datetime
     updated_at: datetime
+
+
+class ClassPublicWithCountResp(ClassPublicResp):
+    """班级列表响应，包含成员数量"""
+
+    member_count: int = 0

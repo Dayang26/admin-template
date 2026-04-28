@@ -3,12 +3,15 @@ import uuid
 from fastapi import HTTPException
 from sqlmodel import Session, select
 
-from app.core.security import get_password_hash
-from app.models.db import Role, User, UserRole
+from app.core.security import get_password_hash, verify_password
+from app.models.db import Class, Role, User, UserRole
 from app.schemas.user import (
+    ClassMembershipResp,
     UserCreateByAdminReq,
     UserCreateReq,
+    UserDetailResp,
     UserUpdateMeReq,
+    UserUpdatePasswordReq,
     UserUpdateReq,
 )
 
@@ -150,3 +153,82 @@ def update_user_me(*, session: Session, user_update: UserUpdateMeReq, current_us
     session.commit()
     session.refresh(current_user)
     return current_user
+
+
+def get_user_detail(*, session: Session, user_id: uuid.UUID) -> UserDetailResp:
+    """Get user details including global roles and class memberships."""
+    user = session.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    global_roles = []
+    class_memberships = []
+
+    for user_role in user.user_roles:
+        if user_role.class_id is None:
+            if user_role.role:
+                global_roles.append(user_role.role.name)
+        else:
+            if user_role.role and user_role.class_:
+                class_memberships.append(
+                    ClassMembershipResp(
+                        class_id=user_role.class_id,
+                        class_name=user_role.class_.name,
+                        role=user_role.role.name,
+                    )
+                )
+
+    return UserDetailResp(
+        **user.model_dump(),
+        roles=global_roles,
+        class_memberships=class_memberships,
+    )
+
+
+def delete_user(*, session: Session, target_user_id: uuid.UUID, current_user_id: uuid.UUID) -> None:
+    """Delete a user, cleaning up role associations first."""
+    target_user = session.get(User, target_user_id)
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # 禁止删除自己
+    if target_user_id == current_user_id:
+        raise HTTPException(status_code=400, detail="Cannot delete yourself")
+
+    # 禁止删除其他超级管理员
+    statement = select(Role.name).join(UserRole, UserRole.role_id == Role.id).where(UserRole.user_id == target_user_id)
+    target_roles = set(session.exec(statement).all())
+
+    if SUPERUSER_ROLE_NAME in target_roles:
+        raise HTTPException(
+            status_code=403,
+            detail="Cannot delete other superusers",
+        )
+
+    # 删除角色关联
+    statement = select(UserRole).where(UserRole.user_id == target_user_id)
+    user_roles = session.exec(statement).all()
+    for ur in user_roles:
+        session.delete(ur)
+
+    session.delete(target_user)
+    session.commit()
+
+
+def update_user_password(*, session: Session, password_in: UserUpdatePasswordReq, current_user: User) -> None:
+    """Update current user's password after verifying the current one."""
+    # 验证旧密码
+    is_correct, _ = verify_password(password_in.current_password, current_user.hashed_password)
+    if not is_correct:
+        raise HTTPException(status_code=400, detail="Incorrect current password")
+
+    # 哈希新密码并保存
+    current_user.hashed_password = get_password_hash(password_in.new_password)
+    session.add(current_user)
+    session.commit()
+
+
+def get_teacher_classes(*, session: Session, teacher_id: uuid.UUID) -> list[Class]:
+    """Get all classes where the user has any role assigned."""
+    statement = select(Class).join(UserRole, UserRole.class_id == Class.id).where(UserRole.user_id == teacher_id).order_by(Class.name)
+    return list(session.exec(statement).all())

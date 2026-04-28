@@ -2,13 +2,12 @@ from collections.abc import Generator
 from pathlib import Path
 
 import pytest
+from alembic import command
+from alembic.config import Config
 from fastapi.testclient import TestClient
 from pydantic import PostgresDsn
 from sqlalchemy import create_engine
 from sqlmodel import Session, select
-
-from alembic import command
-from alembic.config import Config
 
 from app.core.config import settings
 from app.core.db import init_db
