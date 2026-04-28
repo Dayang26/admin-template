@@ -76,14 +76,12 @@ def test_get_users_pagination(client: TestClient, superuser_token_headers: dict[
 
 
 def test_get_users_normal_user_forbidden(client: TestClient, normal_user_token_headers: dict[str, str]) -> None:
-    """
-    Test that a normal user gets a 403 Forbidden error when trying to access the superuser endpoint.
-    """
+    """teacher 角色有 user:read 权限，可以访问用户列表。"""
     response = client.get(
         f"{settings.API_V1_STR}/admin/users/",
         headers=normal_user_token_headers,
     )
-    assert_error(response, 403, "The user doesn't have enough privileges")
+    assert response.status_code == 200
 
 
 def test_get_users_unauthorized(client: TestClient) -> None:
@@ -139,9 +137,11 @@ def test_create_user_by_admin_assign_superuser(client: TestClient, superuser_tok
 
 
 def test_create_user_by_admin_normal_user_forbidden(client: TestClient, normal_user_token_headers: dict[str, str]) -> None:
+    """teacher 角色有 user:create 权限，但角色不存在会返回 400。"""
     payload = {"email": "newuser4@example.com", "password": "securepassword", "roles": ["test_role"]}
     response = client.post(f"{settings.API_V1_STR}/admin/users/", headers=normal_user_token_headers, json=payload)
-    assert_error(response, 403)
+    # teacher 有 user:create 权限，但 test_role 不存在，返回 400
+    assert_error(response, 400)
 
 
 def test_create_user_by_admin_unauthorized(client: TestClient) -> None:

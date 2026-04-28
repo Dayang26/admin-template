@@ -7,14 +7,14 @@ from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlmodel import col, select
 
 from app.deps import SessionDep
-from app.deps.auth import get_current_active_superuser
+from app.deps.permission import require_permission
 from app.models.db.audit_log import AuditLog
 from app.schemas import Response
 
 router = APIRouter(prefix="/admin/audit-logs", tags=["admin/audit-logs"])
 
 
-@router.get("/", dependencies=[Depends(get_current_active_superuser)], response_model=Response[Page[dict]])
+@router.get("/", dependencies=[Depends(require_permission("audit_log", "read"))], response_model=Response[Page[dict]])
 def get_audit_logs(
     session: SessionDep,
     page: int = Query(1, ge=1),

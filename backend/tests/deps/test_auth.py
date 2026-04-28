@@ -8,6 +8,7 @@ from sqlmodel import Session
 from app.core import security
 from app.core.config import settings
 from app.deps.auth import get_current_user
+from app.models.db import User
 from app.models.Token import TokenPayload
 
 
@@ -44,3 +45,19 @@ def test_get_current_user_not_found(session: Session) -> None:
 
     assert exc_info.value.status_code == 404
     assert exc_info.value.detail == "User not found"
+
+
+def test_get_current_user_inactive(session: Session) -> None:
+    """Test get_current_user with a token for an inactive user."""
+    user = User(email="inactive_user@example.com", hashed_password="pw", is_active=False)
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+
+    token = security.create_access_token(user.id)
+
+    with pytest.raises(HTTPException) as exc_info:
+        get_current_user(session=session, token=token)
+
+    assert exc_info.value.status_code == 403
+    assert exc_info.value.detail == "该账号已被禁用"

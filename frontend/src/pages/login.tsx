@@ -53,7 +53,17 @@ export function LoginPage() {
         user?.roles.includes('superuser') ||
         user?.roles.includes('teacher')
       ) {
-        navigate('/admin', { replace: true })
+        // 如果有 dashboard:read 权限，跳转到仪表盘；否则跳转到第一个有权限的页面
+        const perms = user?.permissions ?? []
+        if (perms.includes('dashboard:read') || user?.roles.includes('superuser')) {
+          navigate('/admin', { replace: true })
+        } else if (perms.includes('class:read')) {
+          navigate('/admin/my-classes', { replace: true })
+        } else if (perms.includes('user:read')) {
+          navigate('/admin/users', { replace: true })
+        } else {
+          navigate('/admin', { replace: true })
+        }
       } else {
         navigate('/', { replace: true })
       }

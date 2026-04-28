@@ -2,14 +2,14 @@ from fastapi import APIRouter, Depends
 from sqlmodel import func, select
 
 from app.deps import SessionDep
-from app.deps.auth import get_current_active_superuser
+from app.deps.permission import require_permission
 from app.models.db import Class, Role, User, UserRole
 from app.schemas import Response
 
 router = APIRouter(prefix="/admin/dashboard", tags=["admin/dashboard"])
 
 
-@router.get("/stats", dependencies=[Depends(get_current_active_superuser)], response_model=Response[dict])
+@router.get("/stats", dependencies=[Depends(require_permission("dashboard", "read"))], response_model=Response[dict])
 def get_dashboard_stats(session: SessionDep) -> Response[dict]:
     """获取系统概览统计数据。"""
     total_users = session.exec(select(func.count()).select_from(User)).one()

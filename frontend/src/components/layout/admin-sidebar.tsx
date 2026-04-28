@@ -20,7 +20,8 @@ interface NavItem {
   title: string
   url: string
   icon: React.ComponentType<{ className?: string }>
-  roles: string[]
+  /** 需要的权限，满足任一即可显示 */
+  permissions: string[]
 }
 
 const navItems: NavItem[] = [
@@ -28,46 +29,46 @@ const navItems: NavItem[] = [
     title: '仪表盘',
     url: '/admin',
     icon: LayoutDashboard,
-    roles: ['superuser'],
+    permissions: ['dashboard:read'],
   },
   {
     title: '用户管理',
     url: '/admin/users',
     icon: Users,
-    roles: ['superuser'],
+    permissions: ['user:read'],
   },
   {
     title: '班级管理',
     url: '/admin/classes',
     icon: School,
-    roles: ['superuser'],
+    permissions: ['class:read'],
   },
   {
     title: '我的班级',
     url: '/admin/my-classes',
     icon: BookOpen,
-    roles: ['teacher'],
+    permissions: ['class:read'],
   },
   {
     title: '操作日志',
     url: '/admin/audit-logs',
     icon: ClipboardList,
-    roles: ['superuser'],
+    permissions: ['audit_log:read'],
   },
   {
     title: '角色管理',
     url: '/admin/roles',
     icon: ShieldCheck,
-    roles: ['superuser'],
+    permissions: ['role:read'],
   },
 ]
 
 export function AdminSidebar() {
-  const { user } = useAuth()
+  const { hasPermission } = useAuth()
   const location = useLocation()
 
   const filteredItems = navItems.filter((item) =>
-    item.roles.some((role) => user?.roles.includes(role)),
+    item.permissions.some((perm) => hasPermission(perm)),
   )
 
   return (

@@ -79,14 +79,18 @@ def test_teacher_get_class_members_forbidden(client: TestClient, normal_user_tok
 
 
 def test_teacher_get_classes_empty(client: TestClient, session: Session) -> None:
-    """Test teacher with no classes."""
-    # Create a user with no roles/classes
+    """Test teacher with no classes but has teacher role (class:read permission)."""
     from app.core.security import create_access_token
 
     user = User(email="no_classes@example.com", hashed_password="pw")
     session.add(user)
     session.commit()
     session.refresh(user)
+
+    # 分配 teacher 角色（有 class:read 权限）
+    teacher_role = session.exec(select(Role).where(Role.name == "teacher")).first()
+    session.add(UserRole(user_id=user.id, role_id=teacher_role.id, class_id=None))
+    session.commit()
 
     token = create_access_token(user.id)
     headers = {"Authorization": f"Bearer {token}"}

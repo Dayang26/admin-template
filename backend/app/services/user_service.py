@@ -128,8 +128,11 @@ def update_user_by_admin(
         if missing:
             raise HTTPException(status_code=400, detail=f"Role(s) not found: {', '.join(sorted(missing))}")
 
-        # Delete old role associations
-        statement = select(UserRole).where(UserRole.user_id == target_user_id)
+        # Delete old GLOBAL role associations (preserve class-level roles)
+        statement = select(UserRole).where(
+            UserRole.user_id == target_user_id,
+            UserRole.class_id == None,  # noqa: E711
+        )
         old_user_roles = session.exec(statement).all()
         for old_user_role in old_user_roles:
             session.delete(old_user_role)
@@ -156,7 +159,7 @@ def update_user_me(*, session: Session, user_update: UserUpdateMeReq, current_us
 
 
 def get_user_detail(*, session: Session, user_id: uuid.UUID) -> UserDetailResp:
-    """Get user details including global roles and class memberships."""
+    """Get user details including global roles, permissions and class memberships."""
     user = session.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -178,9 +181,19 @@ def get_user_detail(*, session: Session, user_id: uuid.UUID) -> UserDetailResp:
                     )
                 )
 
+    # 收集用户所有权限（通过全局角色的权限绑定）
+    permissions_set: set[str] = set()
+    for role_name in global_roles:
+        role = session.exec(select(Role).where(Role.name == role_name)).first()
+        if role:
+            for rp in role.role_permissions:
+                if rp.permission:
+                    permissions_set.add(f"{rp.permission.resource}:{rp.permission.action}")
+
     return UserDetailResp(
         **user.model_dump(),
         roles=global_roles,
+        permissions=sorted(permissions_set),
         class_memberships=class_memberships,
     )
 

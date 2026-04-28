@@ -8,7 +8,7 @@ from sqlmodel import col, select
 
 from app.deps import AuditInfo, SessionDep
 from app.deps.audit import log_audit
-from app.deps.auth import get_current_active_superuser
+from app.deps.permission import require_permission
 from app.models.db import Class
 from app.schemas import ClassMemberAddReq, ClassMemberResp, Response
 from app.schemas.user_class import ClassCreateReq, ClassPublicResp, ClassPublicWithCountResp, ClassUpdateReq
@@ -17,7 +17,7 @@ from app.services import class_service
 router = APIRouter(prefix="/admin/classes", tags=["admin/classes"])
 
 
-@router.get("/", dependencies=[Depends(get_current_active_superuser)], response_model=Response[Page[ClassPublicWithCountResp]])
+@router.get("/", dependencies=[Depends(require_permission("class", "read"))], response_model=Response[Page[ClassPublicWithCountResp]])
 def get_classes(
     session: SessionDep,
     page: int = Query(1, ge=1, description="Page number"),
@@ -52,7 +52,7 @@ def get_classes(
     return Response.ok(data=page_data)
 
 
-@router.post("/", dependencies=[Depends(get_current_active_superuser)], response_model=Response[ClassPublicResp], status_code=201)
+@router.post("/", dependencies=[Depends(require_permission("class", "create"))], response_model=Response[ClassPublicResp], status_code=201)
 def create_class(*, session: SessionDep, class_in: ClassCreateReq, audit: AuditInfo) -> Response[ClassPublicResp]:
     """创建班级。"""
     db_class = class_service.create_class(session=session, class_create=class_in)
@@ -62,14 +62,14 @@ def create_class(*, session: SessionDep, class_in: ClassCreateReq, audit: AuditI
     return Response.ok(data=ClassPublicResp.model_validate(db_class), code=201)
 
 
-@router.get("/{class_id}", dependencies=[Depends(get_current_active_superuser)], response_model=Response[ClassPublicResp])
+@router.get("/{class_id}", dependencies=[Depends(require_permission("class", "read"))], response_model=Response[ClassPublicResp])
 def get_class(*, session: SessionDep, class_id: uuid.UUID) -> Response[ClassPublicResp]:
     """获取班级详情。"""
     db_class = class_service.get_class(session=session, class_id=class_id)
     return Response.ok(data=ClassPublicResp.model_validate(db_class))
 
 
-@router.patch("/{class_id}", dependencies=[Depends(get_current_active_superuser)], response_model=Response[ClassPublicResp])
+@router.patch("/{class_id}", dependencies=[Depends(require_permission("class", "update"))], response_model=Response[ClassPublicResp])
 def update_class(*, session: SessionDep, class_id: uuid.UUID, class_in: ClassUpdateReq, audit: AuditInfo) -> Response[ClassPublicResp]:
     """更新班级信息。"""
     db_class = class_service.update_class(session=session, class_id=class_id, class_update=class_in)
@@ -84,7 +84,7 @@ def update_class(*, session: SessionDep, class_id: uuid.UUID, class_in: ClassUpd
     return Response.ok(data=ClassPublicResp.model_validate(db_class))
 
 
-@router.delete("/{class_id}", dependencies=[Depends(get_current_active_superuser)], response_model=Response[None])
+@router.delete("/{class_id}", dependencies=[Depends(require_permission("class", "delete"))], response_model=Response[None])
 def delete_class(*, session: SessionDep, class_id: uuid.UUID, audit: AuditInfo) -> Response[None]:
     """删除班级。"""
     db_class = class_service.get_class(session=session, class_id=class_id)
@@ -97,7 +97,7 @@ def delete_class(*, session: SessionDep, class_id: uuid.UUID, audit: AuditInfo) 
     return Response.ok(data=None)
 
 
-@router.get("/{class_id}/members", dependencies=[Depends(get_current_active_superuser)], response_model=Response[Page[ClassMemberResp]])
+@router.get("/{class_id}/members", dependencies=[Depends(require_permission("class", "read"))], response_model=Response[Page[ClassMemberResp]])
 def get_class_members(
     *,
     session: SessionDep,
@@ -130,7 +130,7 @@ def get_class_members(
     return Response.ok(data=page_data)
 
 
-@router.post("/{class_id}/members", dependencies=[Depends(get_current_active_superuser)], response_model=Response[None])
+@router.post("/{class_id}/members", dependencies=[Depends(require_permission("class", "update"))], response_model=Response[None])
 def add_class_member(*, session: SessionDep, class_id: uuid.UUID, member_in: ClassMemberAddReq, audit: AuditInfo) -> Response[None]:
     """添加班级成员。"""
     class_service.add_class_member(session=session, class_id=class_id, member_in=member_in)
@@ -140,7 +140,7 @@ def add_class_member(*, session: SessionDep, class_id: uuid.UUID, member_in: Cla
     return Response.ok(data=None, message="成员已添加")
 
 
-@router.delete("/{class_id}/members/{user_id}", dependencies=[Depends(get_current_active_superuser)], response_model=Response[None])
+@router.delete("/{class_id}/members/{user_id}", dependencies=[Depends(require_permission("class", "update"))], response_model=Response[None])
 def remove_class_member(*, session: SessionDep, class_id: uuid.UUID, user_id: uuid.UUID, audit: AuditInfo) -> Response[None]:
     """移除班级成员。"""
     class_service.remove_class_member(session=session, class_id=class_id, user_id=user_id)

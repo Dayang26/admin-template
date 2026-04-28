@@ -70,7 +70,8 @@ def test_get_classes_forbidden(client: TestClient, normal_user_token_headers: di
         f"{settings.API_V1_STR}/admin/classes/",
         headers=normal_user_token_headers,
     )
-    assert_error(response, 403, "The user doesn't have enough privileges")
+    # teacher 角色有 class:read 权限，可以访问班级列表
+    assert response.status_code == 200
 
 
 def test_get_classes_unauthorized(client: TestClient) -> None:
@@ -159,7 +160,8 @@ def test_get_class_forbidden(client: TestClient, normal_user_token_headers: dict
         f"{settings.API_V1_STR}/admin/classes/{db_class.id}",
         headers=normal_user_token_headers,
     )
-    assert_error(response, 403)
+    # teacher 角色有 class:read 权限
+    assert response.status_code == 200
 
 
 def test_get_class_unauthorized(client: TestClient) -> None:

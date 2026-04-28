@@ -16,6 +16,7 @@ interface AuthContextType {
   isLoading: boolean
   login: (token: string) => Promise<UserDetail | undefined>
   logout: () => void
+  hasPermission: (permission: string) => boolean
   isStudent: boolean
   isTeacher: boolean
   isSuperuser: boolean
@@ -71,12 +72,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [fetchMe])
 
+  const hasPermission = useCallback(
+    (permission: string) => {
+      if (!user) return false
+      // superuser 拥有所有权限
+      if (user.roles.includes('superuser')) return true
+      return user.permissions?.includes(permission) ?? false
+    },
+    [user],
+  )
+
   const value: AuthContextType = {
     user,
     token,
     isLoading,
     login,
     logout,
+    hasPermission,
     isStudent: user?.roles.includes('student') ?? false,
     isTeacher: user?.roles.includes('teacher') ?? false,
     isSuperuser: user?.roles.includes('superuser') ?? false,

@@ -67,7 +67,8 @@ class ClassMembershipResp(SQLModel):
 
 
 class UserDetailResp(UserPublicResp):
-    """用户详情，包含角色与班级归属"""
+    """用户详情，包含角色、权限与班级归属"""
 
     roles: list[str]  # 全局角色名列表
+    permissions: list[str] = Field(default_factory=list)  # 权限列表，如 ["user:read", "class:read"]
     class_memberships: list[ClassMembershipResp]  # 班级级别的角色绑定

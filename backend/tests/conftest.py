@@ -6,7 +6,7 @@ from alembic import command
 from alembic.config import Config
 from fastapi.testclient import TestClient
 from pydantic import PostgresDsn
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlmodel import Session, select
 
 from app.core.config import settings
@@ -18,9 +18,36 @@ from app.models.db import Role, User, UserRole
 
 # backend/app 目录的绝对路径，用于定位 alembic.ini
 _APP_DIR = Path(__file__).resolve().parent.parent / "app"
+_TEST_DB_NAME = "app_test"
 
 # ---------------------------------------------------------------------------
-# 1. 构建指向 app_test 的测试引擎
+# 1. 自动创建测试数据库（如果不存在）
+# ---------------------------------------------------------------------------
+def _ensure_test_database() -> None:
+    """连接到默认 postgres 数据库，检查并创建测试数据库。"""
+    admin_url = PostgresDsn.build(
+        scheme="postgresql+psycopg",
+        username=settings.POSTGRES_USER,
+        password=settings.POSTGRES_PASSWORD,
+        host=settings.POSTGRES_SERVER,
+        port=settings.POSTGRES_PORT,
+        path="postgres",
+    )
+    admin_engine = create_engine(str(admin_url), isolation_level="AUTOCOMMIT")
+    with admin_engine.connect() as conn:
+        result = conn.execute(
+            text("SELECT 1 FROM pg_database WHERE datname = :dbname"),
+            {"dbname": _TEST_DB_NAME},
+        )
+        if not result.scalar():
+            conn.execute(text(f'CREATE DATABASE "{_TEST_DB_NAME}"'))
+    admin_engine.dispose()
+
+
+_ensure_test_database()
+
+# ---------------------------------------------------------------------------
+# 2. 构建指向 app_test 的测试引擎
 # ---------------------------------------------------------------------------
 test_url = PostgresDsn.build(
     scheme="postgresql+psycopg",
@@ -28,7 +55,7 @@ test_url = PostgresDsn.build(
     password=settings.POSTGRES_PASSWORD,
     host=settings.POSTGRES_SERVER,
     port=settings.POSTGRES_PORT,
-    path="app_test",
+    path=_TEST_DB_NAME,
 )
 test_engine = create_engine(str(test_url))
 

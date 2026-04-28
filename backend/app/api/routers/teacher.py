@@ -1,12 +1,14 @@
 import uuid
 
 from fastapi import APIRouter, HTTPException, Query
+from fastapi.params import Depends
 from fastapi_pagination import Page, Params
 from fastapi_pagination.ext.sqlalchemy import paginate
 from sqlmodel import select
 
 from app.deps import SessionDep
 from app.deps.auth import CurrentUser
+from app.deps.permission import require_permission
 from app.models.db import Role, User, UserRole
 from app.schemas import ClassMemberResp, ClassPublicResp, Response
 from app.services import user_service
@@ -14,7 +16,7 @@ from app.services import user_service
 router = APIRouter(prefix="/teacher", tags=["teacher"])
 
 
-@router.get("/classes", response_model=Response[list[ClassPublicResp]])
+@router.get("/classes", dependencies=[Depends(require_permission("class", "read"))], response_model=Response[list[ClassPublicResp]])
 def get_my_classes(
     *,
     session: SessionDep,
@@ -25,7 +27,7 @@ def get_my_classes(
     return Response.ok(data=[ClassPublicResp.model_validate(c) for c in classes])
 
 
-@router.get("/classes/{class_id}/members", response_model=Response[Page[ClassMemberResp]])
+@router.get("/classes/{class_id}/members", dependencies=[Depends(require_permission("class", "read"))], response_model=Response[Page[ClassMemberResp]])
 def get_class_members(
     *,
     session: SessionDep,

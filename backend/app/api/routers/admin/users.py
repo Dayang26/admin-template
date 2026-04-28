@@ -8,7 +8,8 @@ from sqlmodel import col, select
 
 from app.deps import AuditInfo, SessionDep
 from app.deps.audit import log_audit
-from app.deps.auth import CurrentUser, get_current_active_superuser
+from app.deps.auth import CurrentUser
+from app.deps.permission import require_permission
 from app.models.db import User
 from app.schemas import (
     Response,
@@ -23,7 +24,7 @@ from app.services import user_service
 router = APIRouter(prefix="/admin/users", tags=["admin"])
 
 
-@router.get("/", dependencies=[Depends(get_current_active_superuser)], response_model=Response[Page[UserPublicWithRolesResp]])
+@router.get("/", dependencies=[Depends(require_permission("user", "read"))], response_model=Response[Page[UserPublicWithRolesResp]])
 def get_users(
     session: SessionDep,
     page: int = Query(1, ge=1, description="Page number"),
@@ -80,7 +81,7 @@ def get_users(
     return Response.ok(data=page_data)
 
 
-@router.post("/", dependencies=[Depends(get_current_active_superuser)], response_model=Response[UserPublicResp], status_code=201)
+@router.post("/", dependencies=[Depends(require_permission("user", "create"))], response_model=Response[UserPublicResp], status_code=201)
 def create_user_by_admin(*, session: SessionDep, user_in: UserCreateByAdminReq, audit: AuditInfo) -> Response[UserPublicResp]:
     """管理员创建用户并分配角色。"""
     user = user_service.create_user_with_roles(session=session, user_create=user_in)
@@ -96,7 +97,7 @@ def create_user_by_admin(*, session: SessionDep, user_in: UserCreateByAdminReq, 
     return Response.ok(data=UserPublicResp.model_validate(user), code=201)
 
 
-@router.patch("/{user_id}", dependencies=[Depends(get_current_active_superuser)], response_model=Response[UserPublicResp])
+@router.patch("/{user_id}", dependencies=[Depends(require_permission("user", "update"))], response_model=Response[UserPublicResp])
 def update_user_by_admin(
     *,
     session: SessionDep,
@@ -133,14 +134,14 @@ def update_user_by_admin(
     return Response.ok(data=UserPublicResp.model_validate(user))
 
 
-@router.get("/{user_id}", dependencies=[Depends(get_current_active_superuser)], response_model=Response[UserDetailResp])
+@router.get("/{user_id}", dependencies=[Depends(require_permission("user", "read"))], response_model=Response[UserDetailResp])
 def get_user_detail(*, session: SessionDep, user_id: uuid.UUID) -> Response[UserDetailResp]:
     """获取指定用户详情。"""
     user_detail = user_service.get_user_detail(session=session, user_id=user_id)
     return Response.ok(data=user_detail)
 
 
-@router.delete("/{user_id}", dependencies=[Depends(get_current_active_superuser)], response_model=Response[None])
+@router.delete("/{user_id}", dependencies=[Depends(require_permission("user", "delete"))], response_model=Response[None])
 def delete_user(
     *,
     session: SessionDep,

@@ -15,6 +15,7 @@ export interface ClassMembership {
 
 export interface UserDetail extends UserPublic {
   roles: string[]
+  permissions: string[]
   class_memberships: ClassMembership[]
 }
 
