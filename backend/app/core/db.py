@@ -28,6 +28,8 @@ BUILTIN_PERMISSIONS: list[dict[str, str]] = [
     {"resource": "audit_log", "action": "read"},
     {"resource": "dashboard", "action": "read"},
     {"resource": "upload", "action": "create"},
+    {"resource": "system_setting", "action": "read"},
+    {"resource": "system_setting", "action": "update"},
 ]
 
 ROLE_PERMISSION_MAP: dict[str, list[tuple[str, str]]] = {
@@ -43,6 +45,8 @@ ROLE_PERMISSION_MAP: dict[str, list[tuple[str, str]]] = {
         ("audit_log", "read"),
         ("dashboard", "read"),
         ("upload", "create"),
+        ("system_setting", "read"),
+        ("system_setting", "update"),
     ],
 }
 
@@ -129,10 +133,31 @@ def _ensure_superuser(session: Session, roles: dict[str, Role]) -> None:
         logger.info("Bound user %s to role %s", settings.FIRST_SUPERUSER, superuser_role.name)
 
 
+def _ensure_system_settings(session: Session) -> None:
+    from app.models.db.system_setting import SystemSetting
+
+    setting = session.exec(select(SystemSetting).where(SystemSetting.setting_key == "default")).first()
+    if not setting:
+        setting = SystemSetting(
+            setting_key="default",
+            system_name="Carrier Agent",
+            tagline="管理后台",
+            page_title_template="{page} - {systemName}",
+            default_home_path="/admin",
+            primary_color="#2563eb",
+            theme_mode="system",
+            layout_mode="sidebar",
+        )
+        session.add(setting)
+        session.commit()
+        logger.info("Created default system settings")
+
+
 def init_db(session: Session) -> None:
     logger.info("Starting database seed initialization")
     roles = _ensure_roles(session)
     permissions = _ensure_permissions(session)
     _ensure_role_permissions(session, roles, permissions)
     _ensure_superuser(session, roles)
+    _ensure_system_settings(session)
     logger.info("Database seed initialization complete")

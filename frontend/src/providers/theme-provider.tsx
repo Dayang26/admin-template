@@ -42,14 +42,34 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
     const handler = () => {
+      // 只有在没有强制系统默认主题时，才直接用 OS 主题
+      const systemDefault = window.localStorage.getItem('system-theme-fallback') || 'system'
       const root = document.documentElement
       root.classList.remove('light', 'dark')
-      root.classList.add(getSystemTheme())
+      root.classList.add(systemDefault === 'system' ? getSystemTheme() : (systemDefault as 'light' | 'dark'))
     }
 
     mediaQuery.addEventListener('change', handler)
     return () => mediaQuery.removeEventListener('change', handler)
   }, [theme])
+
+  // 监听来自系统配置的默认主题
+  useEffect(() => {
+    const handleSystemThemeChange = (e: CustomEvent) => {
+      const defaultTheme = e.detail
+      window.localStorage.setItem('system-theme-fallback', defaultTheme)
+      
+      const stored = localStorage.getItem(STORAGE_KEY) as Theme | null
+      if (!stored || stored === 'system') {
+        const root = document.documentElement
+        const resolved = defaultTheme === 'system' ? getSystemTheme() : defaultTheme
+        root.classList.remove('light', 'dark')
+        root.classList.add(resolved)
+      }
+    }
+    window.addEventListener('system-theme-default', handleSystemThemeChange as EventListener)
+    return () => window.removeEventListener('system-theme-default', handleSystemThemeChange as EventListener)
+  }, [])
 
   const setTheme = (newTheme: Theme) => {
     localStorage.setItem(STORAGE_KEY, newTheme)

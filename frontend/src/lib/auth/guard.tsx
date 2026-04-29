@@ -3,6 +3,8 @@ import { useAuth } from './context'
 import { getDefaultRoute } from './routes'
 import type { ReactNode } from 'react'
 
+import { useSystemSettingsContext } from '@/lib/system-settings/context'
+
 interface RequireAuthProps {
   children: ReactNode
   roles?: string[]
@@ -11,6 +13,7 @@ interface RequireAuthProps {
 
 export function RequireAuth({ children, roles, permissions }: RequireAuthProps) {
   const { user, isLoading, token, hasPermission } = useAuth()
+  const { settings } = useSystemSettingsContext()
   const location = useLocation()
 
   if (isLoading) {
@@ -33,14 +36,14 @@ export function RequireAuth({ children, roles, permissions }: RequireAuthProps) 
   if (roles && roles.length > 0) {
     const hasRole = roles.some((role) => user.roles.includes(role))
     if (!hasRole) {
-      return <Navigate to={getDefaultRoute(user)} replace />
+      return <Navigate to={getDefaultRoute(user, settings?.default_home_path)} replace />
     }
   }
 
   if (permissions && permissions.length > 0) {
     const allowed = permissions.some((permission) => hasPermission(permission))
     if (!allowed) {
-      return <Navigate to={getDefaultRoute(user)} replace />
+      return <Navigate to={getDefaultRoute(user, settings?.default_home_path)} replace />
     }
   }
 

@@ -17,6 +17,7 @@ const breadcrumbMap: Record<string, string> = {
   '/admin/users/create': '创建用户',
   '/admin/audit-logs': '日志审计',
   '/admin/roles': '角色管理',
+  '/admin/system-settings': '系统设置',
 }
 
 function getBreadcrumbs(pathname: string) {

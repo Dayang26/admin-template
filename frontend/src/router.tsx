@@ -32,6 +32,9 @@ const AuditLogsPage = lazy(() =>
 const RolesPage = lazy(() =>
   import('@/pages/admin/roles').then((m) => ({ default: m.RolesPage })),
 )
+const SystemSettingsPage = lazy(() =>
+  import('@/pages/admin/system-settings').then((m) => ({ default: m.SystemSettingsPage })),
+)
 const NotFoundPage = lazy(() =>
   import('@/pages/not-found').then((m) => ({ default: m.NotFoundPage })),
 )
@@ -155,6 +158,16 @@ export const router = createBrowserRouter([
               <RequireAuth permissions={['role:read']}>
                 <SuspenseWrapper>
                   <RolesPage />
+                </SuspenseWrapper>
+              </RequireAuth>
+            ),
+          },
+          {
+            path: '/admin/system-settings',
+            element: (
+              <RequireAuth permissions={['system_setting:read']}>
+                <SuspenseWrapper>
+                  <SystemSettingsPage />
                 </SuspenseWrapper>
               </RequireAuth>
             ),

@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/auth/context'
 import { getDefaultRoute } from '@/lib/auth/routes'
 import { login as loginApi } from '@/lib/api/auth'
 import { loginFormSchema, type LoginFormValues } from '@/lib/schemas/login'
+import { useSystemSettingsContext } from '@/lib/system-settings/context'
 
 import {
   Card,
@@ -27,6 +28,7 @@ export function LoginPage() {
   const { login } = useAuth()
   const navigate = useNavigate()
   const [submitting, setSubmitting] = useState(false)
+  const { settings } = useSystemSettingsContext()
 
   const {
     register,
@@ -51,7 +53,7 @@ export function LoginPage() {
       if (returnUrl) {
         navigate(returnUrl, { replace: true })
       } else {
-        navigate(getDefaultRoute(user), { replace: true })
+        navigate(getDefaultRoute(user, settings?.default_home_path), { replace: true })
       }
     } catch (err: unknown) {
       console.error('登录失败:', err)
@@ -86,12 +88,31 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/50 px-4">
-      <Card className="w-full max-w-md">
+    <div 
+      className="flex min-h-screen items-center justify-center bg-muted/50 px-4 bg-cover bg-center relative"
+      style={settings?.login_background_url ? { backgroundImage: `url(${settings.login_background_url})` } : undefined}
+    >
+      <Card className="w-full max-w-md shadow-2xl bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
         <CardHeader>
-          <CardTitle className="text-center text-2xl">欢迎回来</CardTitle>
+          <div className="flex flex-col items-center justify-center space-y-3 mb-2">
+            <div className="flex h-12 items-center justify-center">
+              {settings?.logo_light_url ? (
+                <>
+                  <img src={settings.logo_light_url} className="h-full object-contain dark:hidden" alt="Logo" />
+                  {settings?.logo_dark_url ? (
+                    <img src={settings.logo_dark_url} className="h-full object-contain hidden dark:block" alt="Logo" />
+                  ) : (
+                    <img src={settings.logo_light_url} className="h-full object-contain hidden dark:block" alt="Logo" />
+                  )}
+                </>
+              ) : null}
+            </div>
+            <CardTitle className="text-center text-2xl">
+              {settings?.system_name || '欢迎回来'}
+            </CardTitle>
+          </div>
           <CardDescription className="text-center">
-            请输入您的账号和密码进行登录
+            {settings?.tagline || '请输入您的账号和密码进行登录'}
           </CardDescription>
         </CardHeader>
 
@@ -145,6 +166,12 @@ export function LoginPage() {
           </Button>
         </CardFooter>
       </Card>
+
+      {settings?.copyright && (
+        <div className="absolute bottom-6 left-0 right-0 text-center text-sm text-muted-foreground/80 backdrop-blur-sm">
+          {settings.copyright}
+        </div>
+      )}
     </div>
   )
 }

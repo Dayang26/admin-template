@@ -22,8 +22,9 @@ export async function apiClient<T>(
     headers['Authorization'] = `Bearer ${token}`
   }
 
-  // 默认设置 Content-Type 为 JSON，除非已设置或 body 不是 JSON
-  if (!headers['Content-Type'] && !(options?.body instanceof URLSearchParams)) {
+  // 默认设置 Content-Type 为 JSON，除非已设置或 body 不是 JSON 或 FormData
+  const isFormData = options?.body instanceof FormData
+  if (!headers['Content-Type'] && !isFormData && !(options?.body instanceof URLSearchParams)) {
     headers['Content-Type'] = 'application/json'
   }
 
