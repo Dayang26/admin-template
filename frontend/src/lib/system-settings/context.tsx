@@ -15,11 +15,10 @@ const SystemSettingsContext = createContext<SystemSettingsContextType | undefine
 export function SystemSettingsProvider({ children }: { children: React.ReactNode }) {
   const { data: settings, isLoading, error } = usePublicSystemSettings()
 
-  // Apply Favicon and Theme Color when settings change
+  // Apply favicon when public settings change.
   useEffect(() => {
     if (!settings) return
 
-    // Apply Favicon
     let link: HTMLLinkElement | null = document.querySelector("link[rel~='icon']")
     if (!link) {
       link = document.createElement('link')
@@ -31,20 +30,6 @@ export function SystemSettingsProvider({ children }: { children: React.ReactNode
       link.href = settings.favicon_url
     } else {
       link.href = '/favicon.svg'
-    }
-
-    // Apply Theme Color
-    if (settings.primary_color) {
-      try {
-        document.documentElement.style.setProperty('--primary', settings.primary_color)
-      } catch (e) {
-        console.error('Failed to parse primary color', e)
-      }
-    }
-
-    // Apply Theme Mode globally
-    if (settings.theme_mode) {
-      window.dispatchEvent(new CustomEvent('system-theme-default', { detail: settings.theme_mode }))
     }
   }, [settings])
 

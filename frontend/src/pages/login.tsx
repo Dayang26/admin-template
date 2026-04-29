@@ -53,7 +53,7 @@ export function LoginPage() {
       if (returnUrl) {
         navigate(returnUrl, { replace: true })
       } else {
-        navigate(getDefaultRoute(user, settings?.default_home_path), { replace: true })
+        navigate(getDefaultRoute(user), { replace: true })
       }
     } catch (err: unknown) {
       console.error('登录失败:', err)

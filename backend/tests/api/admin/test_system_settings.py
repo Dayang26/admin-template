@@ -23,12 +23,17 @@ def test_get_admin_system_settings_success(client: TestClient, superuser_token_h
 
 
 def test_update_admin_system_settings_success(client: TestClient, superuser_token_headers: dict[str, str]) -> None:
-    payload = {"system_name": "New System Name", "primary_color": "#112233"}
+    payload = {
+        "system_name": "New System Name",
+        "tagline": "New tagline",
+        "page_title_template": "{page} | {systemName}",
+    }
     response = client.patch(f"{settings.API_V1_STR}/admin/system-settings", headers=superuser_token_headers, json=payload)
     data = assert_success(response, 200)
 
     assert data["system_name"] == "New System Name"
-    assert data["primary_color"] == "#112233"
+    assert data["tagline"] == "New tagline"
+    assert data["page_title_template"] == "{page} | {systemName}"
 
     # Verify public settings are also updated
     public_response = client.get(f"{settings.API_V1_STR}/system-settings/public")
@@ -42,3 +47,15 @@ def test_update_admin_system_settings_invalid_image(client: TestClient, superuse
     payload = {"logo_light_file_id": invalid_uuid}
     response = client.patch(f"{settings.API_V1_STR}/admin/system-settings", headers=superuser_token_headers, json=payload)
     assert_error(response, 400, "浅色 Logo: 文件不存在")
+
+
+def test_update_admin_system_settings_rejects_null_required_field(client: TestClient, superuser_token_headers: dict[str, str]) -> None:
+    payload = {"system_name": None}
+    response = client.patch(f"{settings.API_V1_STR}/admin/system-settings", headers=superuser_token_headers, json=payload)
+    assert_error(response, 422)
+
+
+def test_update_admin_system_settings_rejects_removed_behavior_fields(client: TestClient, superuser_token_headers: dict[str, str]) -> None:
+    payload = {"primary_color": "#112233"}
+    response = client.patch(f"{settings.API_V1_STR}/admin/system-settings", headers=superuser_token_headers, json=payload)
+    assert_error(response, 422)

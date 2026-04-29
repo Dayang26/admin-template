@@ -45,18 +45,3 @@ class SystemSetting(UUIDPrimaryKeyMixin, TimestampMixin, SQLModel, table=True):
             "lazy": "selectin",
         }
     )
-
-    primary_color: str = Field(max_length=20)
-    theme_mode: str = Field(max_length=20)
-    layout_mode: str = Field(max_length=20)
-
-    menu_collapsed_default: bool = Field(default=False)
-    fixed_header: bool = Field(default=True)
-    fixed_sidebar: bool = Field(default=True)
-    page_animation_enabled: bool = Field(default=True)
-
-    default_home_path: str = Field(max_length=255)
-
-    tab_view_enabled: bool = Field(default=False)
-    route_cache_enabled: bool = Field(default=False)
-    request_timeout_ms: int = Field(default=10000)

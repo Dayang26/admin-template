@@ -17,7 +17,7 @@ from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
 from app.core.config import settings
-from app.models.db import Role
+from app.models.db import Role, RolePermission
 from tests.conftest import assert_error, assert_success
 
 
@@ -246,3 +246,45 @@ class TestPermissions:
             json={"permission_ids": [fake_perm_id]},
         )
         assert_error(response, 400)
+
+    def test_update_role_permissions_malformed_id(self, client: TestClient, superuser_token_headers: dict):
+        """传非法 UUID 返回 422，而不是未处理异常。"""
+        create_resp = client.post(
+            f"{settings.API_V1_STR}/admin/roles/",
+            headers=superuser_token_headers,
+            json={"name": "perm_malformed_role"},
+        )
+        role_id = create_resp.json()["data"]["id"]
+
+        response = client.put(
+            f"{settings.API_V1_STR}/admin/roles/{role_id}/permissions",
+            headers=superuser_token_headers,
+            json={"permission_ids": ["not-a-uuid"]},
+        )
+        assert_error(response, 422)
+
+    def test_update_role_permissions_deduplicates_ids(self, client: TestClient, session: Session, superuser_token_headers: dict):
+        """重复权限 ID 只创建一条角色权限绑定。"""
+        create_resp = client.post(
+            f"{settings.API_V1_STR}/admin/roles/",
+            headers=superuser_token_headers,
+            json={"name": "perm_dedupe_role"},
+        )
+        role_id = create_resp.json()["data"]["id"]
+
+        perms_resp = client.get(
+            f"{settings.API_V1_STR}/admin/roles/permissions",
+            headers=superuser_token_headers,
+        )
+        perm_id = perms_resp.json()["data"][0]["id"]
+
+        response = client.put(
+            f"{settings.API_V1_STR}/admin/roles/{role_id}/permissions",
+            headers=superuser_token_headers,
+            json={"permission_ids": [perm_id, perm_id]},
+        )
+        data = assert_success(response)
+        assert len(data["permissions"]) == 1
+
+        bindings = session.exec(select(RolePermission).where(RolePermission.role_id == uuid.UUID(role_id))).all()
+        assert len(bindings) == 1

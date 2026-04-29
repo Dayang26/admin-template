@@ -20,10 +20,6 @@ def get_or_create_system_setting(session: Session) -> SystemSetting:
             system_name="Carrier Agent",
             tagline="管理后台",
             page_title_template="{page} - {systemName}",
-            default_home_path="/admin",
-            primary_color="#2563eb",
-            theme_mode="system",
-            layout_mode="sidebar",
         )
         session.add(setting)
         session.commit()
@@ -41,14 +37,6 @@ def _build_public_resp(setting: SystemSetting) -> SystemSettingPublicResp:
         logo_dark_url=setting.logo_dark_file.public_url if setting.logo_dark_file else None,
         favicon_url=setting.favicon_file.public_url if setting.favicon_file else None,
         login_background_url=setting.login_background_file.public_url if setting.login_background_file else None,
-        primary_color=setting.primary_color,
-        theme_mode=setting.theme_mode,
-        layout_mode=setting.layout_mode,
-        menu_collapsed_default=setting.menu_collapsed_default,
-        fixed_header=setting.fixed_header,
-        fixed_sidebar=setting.fixed_sidebar,
-        page_animation_enabled=setting.page_animation_enabled,
-        default_home_path=setting.default_home_path,
     )
 
 
@@ -60,9 +48,6 @@ def _build_admin_resp(setting: SystemSetting) -> SystemSettingAdminResp:
         logo_dark_file_id=setting.logo_dark_file_id,
         favicon_file_id=setting.favicon_file_id,
         login_background_file_id=setting.login_background_file_id,
-        tab_view_enabled=setting.tab_view_enabled,
-        route_cache_enabled=setting.route_cache_enabled,
-        request_timeout_ms=setting.request_timeout_ms,
     )
 
 

@@ -8,6 +8,7 @@ from app.deps.audit import log_audit
 from app.deps.permission import require_permission
 from app.models.db import Permission, Role, RolePermission
 from app.schemas import Response
+from app.schemas.role import RolePermissionUpdateReq
 
 router = APIRouter(prefix="/admin/roles", tags=["admin/roles"])
 
@@ -144,7 +145,7 @@ def update_role_permissions(
     *,
     session: SessionDep,
     role_id: uuid.UUID,
-    body: dict,
+    body: RolePermissionUpdateReq,
     audit: AuditInfo,
 ) -> Response[dict]:
     """全量替换角色的权限绑定。"""
@@ -152,12 +153,12 @@ def update_role_permissions(
     if not role:
         raise HTTPException(status_code=404, detail="角色不存在")
 
-    permission_ids: list[str] = body.get("permission_ids", [])
+    permission_ids = body.permission_ids
 
     # 验证所有权限 ID 存在
     permissions = []
     for pid in permission_ids:
-        perm = session.get(Permission, uuid.UUID(pid))
+        perm = session.get(Permission, pid)
         if not perm:
             raise HTTPException(status_code=400, detail=f"权限 ID '{pid}' 不存在")
         permissions.append(perm)

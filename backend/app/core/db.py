@@ -143,10 +143,6 @@ def _ensure_system_settings(session: Session) -> None:
             system_name="Carrier Agent",
             tagline="管理后台",
             page_title_template="{page} - {systemName}",
-            default_home_path="/admin",
-            primary_color="#2563eb",
-            theme_mode="system",
-            layout_mode="sidebar",
         )
         session.add(setting)
         session.commit()
