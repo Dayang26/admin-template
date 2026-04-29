@@ -38,7 +38,7 @@ const navItems: NavItem[] = [
     permissions: ['user:read'],
   },
   {
-    title: '操作日志',
+    title: '日志审计',
     url: '/admin/audit-logs',
     icon: ClipboardList,
     permissions: ['audit_log:read'],

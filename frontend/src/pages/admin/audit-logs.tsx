@@ -57,7 +57,7 @@ export function AuditLogsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="操作日志"
+        title="日志审计"
         description="查看系统操作记录"
         actions={
           <Button
