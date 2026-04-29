@@ -7,6 +7,8 @@ from fastapi.routing import APIRoute
 from fastapi_pagination import add_pagination
 from sqlmodel import Session
 from starlette.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
 
 from app.api.main import api_router
 from app.core.config import settings
@@ -92,6 +94,16 @@ async def unhandled_exception_handler(_request: Request, _exc: Exception) -> JSO
 app.include_router(api_router, prefix=settings.API_V1_STR)
 add_pagination(app)
 
+public_dir = Path(settings.UPLOAD_PUBLIC_DIR).resolve()
+private_dir = Path(settings.UPLOAD_PRIVATE_DIR).resolve()
+public_dir.mkdir(parents=True, exist_ok=True)
+private_dir.mkdir(parents=True, exist_ok=True)
+
+app.mount(
+    "/uploads/public",
+    StaticFiles(directory=public_dir),
+    name="uploads_public",
+)
 
 @app.get("/")
 async def root():

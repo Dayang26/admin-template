@@ -27,6 +27,7 @@ BUILTIN_PERMISSIONS: list[dict[str, str]] = [
     {"resource": "role", "action": "delete"},
     {"resource": "audit_log", "action": "read"},
     {"resource": "dashboard", "action": "read"},
+    {"resource": "upload", "action": "create"},
 ]
 
 ROLE_PERMISSION_MAP: dict[str, list[tuple[str, str]]] = {
@@ -41,6 +42,7 @@ ROLE_PERMISSION_MAP: dict[str, list[tuple[str, str]]] = {
         ("role", "delete"),
         ("audit_log", "read"),
         ("dashboard", "read"),
+        ("upload", "create"),
     ],
 }
 

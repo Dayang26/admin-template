@@ -66,6 +66,14 @@ class Settings(BaseSettings):
     FIRST_SUPERUSER: EmailStr = "admin@example.com"  # type: ignore
     FIRST_SUPERUSER_PASSWORD: str = "changethis"
 
+    # Upload settings
+    UPLOAD_STORAGE_DRIVER: str = "local"
+    UPLOAD_PUBLIC_DIR: str = "storage/uploads/public"
+    UPLOAD_PRIVATE_DIR: str = "storage/uploads/private"
+    UPLOAD_PUBLIC_URL_PREFIX: str = "/uploads/public"
+    UPLOAD_MAX_IMAGE_SIZE_MB: int = 5
+    UPLOAD_ALLOWED_IMAGE_EXTENSIONS: str = "png,jpg,jpeg,webp,ico"
+
     def _check_default_secret(self, var_name: str, value: str | None) -> None:
         if value == "changethis":
             message = f"The value of {var_name} must be changed and cannot be 'changethis'."

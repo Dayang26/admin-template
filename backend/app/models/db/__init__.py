@@ -5,5 +5,6 @@ from app.models.db.role import Role
 from app.models.db.rolePermission import RolePermission
 from app.models.db.user import User
 from app.models.db.userRole import UserRole
+from app.models.db.upload_file import UploadFile
 
-__all__ = ["TimestampMixin", "UUIDPrimaryKeyMixin", "AuditLog", "User", "Role", "Permission", "UserRole", "RolePermission"]
+__all__ = ["TimestampMixin", "UUIDPrimaryKeyMixin", "AuditLog", "User", "Role", "Permission", "UserRole", "RolePermission", "UploadFile"]

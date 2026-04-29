@@ -5,6 +5,7 @@ from app.api.routers.admin.audit_logs import router as admin_audit_logs_router
 from app.api.routers.admin.dashboard import router as admin_dashboard_router
 from app.api.routers.admin.roles import router as admin_roles_router
 from app.api.routers.admin.users import router as admin_users_router
+from app.api.routers import uploads
 from app.core.config import settings
 
 api_router = APIRouter()
@@ -14,6 +15,7 @@ api_router.include_router(admin_users_router)
 api_router.include_router(admin_dashboard_router)
 api_router.include_router(admin_roles_router)
 api_router.include_router(admin_audit_logs_router)
+api_router.include_router(uploads.router)
 
 
 # todo :: add more endpoints
