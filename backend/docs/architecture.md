@@ -304,9 +304,9 @@ def require_permission(resource: str, action: str):
         # 3. 无匹配 → 403 Insufficient permissions
 ```
 
-### 6.4 超级用户（superuser）
+### 6.4 权限全局管控策略
 
-`get_current_active_superuser` 依赖专门检查用户是否拥有名为 `"superuser"` 的角色，用于保护管理员专属接口。
+系统已全面废除在业务路由中硬编码 `get_current_active_superuser` 的做法，所有的管理员及教师接口均已改造为基于 `require_permission` 的细粒度控制。这使得企业级 RBAC 真正生效：通过分配如 `"user"`, `"class"`, `"role"`, `"audit_log"`, `"dashboard"` 的对应权限，非超级用户也能管理系统的指定模块。超级管理员（`superuser`）角色在底层的 `require_permission` 校验中具有内置的全局放行特权。
 
 ---
 
@@ -325,23 +325,23 @@ def require_permission(resource: str, action: str):
 | PATCH | `/api/v1/users/me` | 当前登录用户 | 更新个人资料（全名） |
 | PATCH | `/api/v1/users/me/password` | 当前登录用户 | 修改个人密码 |
 | POST | `/api/v1/users/` | require_permission("user","create") | 创建用户（普通权限） |
-| GET | `/api/v1/admin/users/` | superuser 角色 | 获取用户列表（支持搜索筛选） |
-| POST | `/api/v1/admin/users/` | superuser 角色 | 管理员创建用户并分配角色 |
-| GET | `/api/v1/admin/users/{user_id}` | superuser 角色 | 获取用户详情（含角色与班级归属） |
-| PATCH | `/api/v1/admin/users/{user_id}` | superuser 角色 | 管理员更新用户信息 |
-| DELETE | `/api/v1/admin/users/{user_id}` | superuser 角色 | 管理员删除用户账号 |
-| GET | `/api/v1/admin/classes/` | superuser 角色 | 分页获取所有班级列表 |
-| POST | `/api/v1/admin/classes/` | superuser 角色 | 创建新班级 |
-| PATCH | `/api/v1/admin/classes/{class_id}` | superuser 角色 | 更新班级信息 |
-| DELETE | `/api/v1/admin/classes/{class_id}` | superuser 角色 | 删除班级 |
-| GET | `/api/v1/admin/classes/{class_id}/members` | superuser 角色 | 获取班级成员列表 |
-| POST | `/api/v1/admin/classes/{class_id}/members` | superuser 角色 | 添加成员到班级（分配角色） |
-| DELETE | `/api/v1/admin/classes/{class_id}/members/{user_id}` | superuser 角色 | 从班级中移除成员 |
-| GET | `/api/v1/admin/roles/` | superuser 角色 | 分页获取角色列表 |
-| GET | `/api/v1/admin/audit-logs/` | superuser 角色 | 分页查询审计日志 |
-| GET | `/api/v1/teacher/classes` | 班级成员 | 获取当前用户参与的班级列表 |
-| GET | `/api/v1/teacher/classes/{class_id}/members` | 班级成员 | 获取所在班级的成员列表 |
-| GET | `/api/v1/admin/dashboard/stats` | superuser 角色 | 获取系统概览统计数据 |
+| GET | `/api/v1/admin/users/` | require_permission("user", "read") | 获取用户列表（支持搜索筛选） |
+| POST | `/api/v1/admin/users/` | require_permission("user", "create") | 管理员创建用户并分配角色 |
+| GET | `/api/v1/admin/users/{user_id}` | require_permission("user", "read") | 获取用户详情（含角色与班级归属） |
+| PATCH | `/api/v1/admin/users/{user_id}` | require_permission("user", "update") | 管理员更新用户信息 |
+| DELETE | `/api/v1/admin/users/{user_id}` | require_permission("user", "delete") | 管理员删除用户账号 |
+| GET | `/api/v1/admin/classes/` | require_permission("class", "read") | 分页获取所有班级列表 |
+| POST | `/api/v1/admin/classes/` | require_permission("class", "create") | 创建新班级 |
+| PATCH | `/api/v1/admin/classes/{class_id}` | require_permission("class", "update") | 更新班级信息 |
+| DELETE | `/api/v1/admin/classes/{class_id}` | require_permission("class", "delete") | 删除班级 |
+| GET | `/api/v1/admin/classes/{class_id}/members` | require_permission("class", "read") | 获取班级成员列表 |
+| POST | `/api/v1/admin/classes/{class_id}/members` | require_permission("class", "update") | 添加成员到班级（分配角色） |
+| DELETE | `/api/v1/admin/classes/{class_id}/members/{user_id}` | require_permission("class", "update") | 从班级中移除成员 |
+| GET | `/api/v1/admin/roles/` | require_permission("role", "read") | 分页获取角色列表 |
+| GET | `/api/v1/admin/audit-logs/` | require_permission("audit_log", "read") | 分页查询审计日志 |
+| GET | `/api/v1/teacher/classes` | require_permission("class", "read") | 获取当前用户参与的班级列表 |
+| GET | `/api/v1/teacher/classes/{class_id}/members` | require_permission("class", "read") | 获取所在班级的成员列表 |
+| GET | `/api/v1/admin/dashboard/stats` | require_permission("dashboard", "read") | 获取系统概览统计数据 |
 
 ### 7.3 路由聚合（api/main.py）
 
@@ -621,6 +621,8 @@ alembic revision --autogenerate -m "描述"  # 生成新迁移
 
 **安全校验**：生产环境下若 `SECRET_KEY`、`POSTGRES_PASSWORD`、`FIRST_SUPERUSER_PASSWORD` 仍为默认值 `"changethis"`，启动时直接抛出 `ValueError`。
 
+**网络访问**：开发服务器（Uvicorn）默认绑定配置已调整至 `0.0.0.0`，允许局域网内其他设备直接通过本机 IP 访问后端 API 接口。
+
 ---
 
 ## 15. 测试架构
@@ -633,6 +635,8 @@ alembic revision --autogenerate -m "描述"  # 生成新迁移
 |------|------|------|
 | 单元测试 | `tests/services/` | 使用 monkeypatch 隔离依赖，不访问数据库 |
 | 集成测试 | `tests/api/` | 使用 TestClient + 真实数据库，测试完整请求链路 |
+
+项目已集成 **pytest-cov** 以生成详细的代码覆盖率报告。所有核心服务逻辑、API 路由、依赖和中间件等已完成严密的测试保护（涵盖各种越权、非法状态和边缘条件），目标维持 100% 覆盖率，并配备完整的自动化脚本支持（位于 `scripts/`）。
 
 ### 15.2 测试 Fixtures（conftest.py）
 
@@ -762,4 +766,3 @@ uvicorn app.main:app
 | `api/main.py` | 本地环境专用私有路由 |
 | `app/main.py` | Sentry DSN 错误监控集成 |
 | `app/agents/` | AI Agent 核心逻辑实现（预留目录） |
-| 整体 | 权限细粒度动态化配置界面及功能联调 |

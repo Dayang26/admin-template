@@ -19,6 +19,7 @@
 | 状态管理 | React Context | 仅用于 Auth 全局状态 |
 | 主题 | 自定义 ThemeProvider | 暗色/亮色切换（基于 CSS 变量 + localStorage） |
 | 表单 | React Hook Form + Zod | Shadcn/ui 推荐搭配 |
+| 动画与图表 | React CountUp / Recharts | Dashboard 数据可视化 |
 | 图标 | Lucide React | Shadcn/ui 内置图标库 |
 | HTTP 客户端 | fetch (原生) | 封装统一拦截器 |
 | 测试 | Vitest + React Testing Library | 单元测试 + 组件测试 |
@@ -80,6 +81,8 @@ frontend/
 │   │   │
 │   │   └── admin/
 │   │       ├── dashboard.tsx         # Dashboard 总览
+│   │       ├── roles.tsx             # 角色权限管理
+│   │       ├── audit-logs.tsx        # 审计日志查看
 │   │       ├── users/
 │   │       │   ├── list.tsx          # 用户列表
 │   │       │   ├── create.tsx        # 创建用户
@@ -98,6 +101,8 @@ frontend/
 │   │   │   ├── auth.ts              # 登录接口
 │   │   │   ├── users.ts             # 用户相关接口
 │   │   │   ├── classes.ts           # 班级相关接口
+│   │   │   ├── roles.ts             # 角色相关接口
+│   │   │   ├── audit-logs.ts        # 审计日志接口
 │   │   │   ├── teacher.ts           # 教师相关接口
 │   │   │   └── dashboard.ts         # Dashboard 接口
 │   │   ├── auth/
@@ -106,6 +111,8 @@ frontend/
 │   │   ├── hooks/
 │   │   │   ├── use-users.ts         # 用户数据 hooks (TanStack Query)
 │   │   │   ├── use-classes.ts       # 班级数据 hooks
+│   │   │   ├── use-roles.ts         # 角色数据 hooks
+│   │   │   ├── use-audit-logs.ts    # 审计日志数据 hooks
 │   │   │   └── use-dashboard.ts     # Dashboard 数据 hooks
 │   │   ├── schemas/
 │   │   │   └── login.ts             # 登录表单 Zod schema
@@ -193,6 +200,8 @@ const router = createBrowserRouter([
 | `/admin/classes` | 班级列表 | superuser | Admin Layout |
 | `/admin/classes/create` | 创建班级 | superuser | Admin Layout |
 | `/admin/classes/:id` | 班级详情+成员管理 | superuser | Admin Layout |
+| `/admin/roles` | 角色管理 | superuser | Admin Layout |
+| `/admin/audit-logs` | 审计日志 | superuser | Admin Layout |
 | `/admin/my-classes` | 我的班级 | teacher | Admin Layout |
 | `/admin/my-classes/:id` | 班级成员查看 | teacher | Admin Layout |
 
@@ -380,6 +389,8 @@ async function apiClient<T>(url: string, options?: RequestInit): Promise<T>
 | 认证 | `auth.ts` | login |
 | 用户 (admin) | `users.ts` | list, get, create, update, delete |
 | 班级 (admin) | `classes.ts` | list, get, create, update, delete, members CRUD |
+| 角色 (admin) | `roles.ts` | list, update, delete, get |
+| 审计 (admin) | `audit-logs.ts` | list |
 | 教师 | `teacher.ts` | myClasses, classMembers |
 | 用户自服务 | `me.ts` | getMe, updateMe, changePassword |
 | Dashboard | `dashboard.ts` | getStats |
@@ -494,8 +505,18 @@ interface DashboardStats {
 
 ### 8.4 管理端 Dashboard (`/admin`)
 
-- **Superuser**：统计卡片（用户总数、活跃用户、班级总数）+ 角色分布
+- **Superuser**：统计卡片（用户总数、活跃用户、班级总数，集成 `react-countup` 动画特效）+ 角色分布图表可视化
 - **Teacher**：重定向到 `/admin/my-classes`
+
+### 8.11 角色管理 (`/admin/roles`)
+
+- DataTable：角色列表展示及权限分配详情
+- 权限配置面板与动态加载
+
+### 8.12 审计日志 (`/admin/audit-logs`)
+
+- DataTable：关键操作记录追溯（操作人、行为、IP、时间等）
+- 分页展示与筛选
 
 ### 8.5 用户管理 (`/admin/users`)
 
@@ -555,10 +576,10 @@ interface DashboardStats {
 ```bash
 cd frontend
 npm install
-npm run dev          # 启动 Vite 开发服务器（默认 http://localhost:5173）
+npm run dev          # 启动 Vite 开发服务器，支持 --host 参数绑定 0.0.0.0 以供局域网访问
 ```
 
-Vite 开发服务器自动代理 `/api` 请求到后端 `http://localhost:8000`。
+Vite 开发服务器已配置绑定 `0.0.0.0`，并自动代理 `/api` 请求到后端 `http://localhost:8000`。这允许在同局域网内通过本机 IP 访问前端界面。
 
 ### 10.2 生产构建
 
@@ -643,3 +664,4 @@ server {
 - [x] 响应式适配（移动端 Sidebar Sheet 模式 + 学生端导航图标模式）
 - [x] 404 页面（角色智能跳转）
 - [x] 路由守卫验证（学生/管理端角色隔离）
+- [x] E2E 自动化测试修复与 `localStorage` Token 注入支持
