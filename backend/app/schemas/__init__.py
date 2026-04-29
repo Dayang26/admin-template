@@ -1,7 +1,5 @@
-from app.schemas.class_member import ClassMemberAddReq, ClassMemberResp
 from app.schemas.response import Response
 from app.schemas.user import (
-    ClassMembershipResp,
     UserBase,
     UserCreateByAdminReq,
     UserCreateReq,
@@ -11,7 +9,6 @@ from app.schemas.user import (
     UserUpdatePasswordReq,
     UserUpdateReq,
 )
-from app.schemas.user_class import ClassCreateReq, ClassPublicResp, ClassUpdateReq
 
 __all__ = [
     "Response",
@@ -22,11 +19,5 @@ __all__ = [
     "UserUpdateReq",
     "UserUpdateMeReq",
     "UserUpdatePasswordReq",
-    "ClassCreateReq",
-    "ClassUpdateReq",
-    "ClassPublicResp",
     "UserDetailResp",
-    "ClassMembershipResp",
-    "ClassMemberResp",
-    "ClassMemberAddReq",
 ]

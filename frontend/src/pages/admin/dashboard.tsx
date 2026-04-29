@@ -1,4 +1,4 @@
-import { Users, School, UserCheck, PieChart } from 'lucide-react'
+import { Users, UserCheck, PieChart, ShieldCheck } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
@@ -10,8 +10,6 @@ const CountUp = (ReactCountUp as unknown as { default: typeof ReactCountUp }).de
 
 const ROLE_LABELS: Record<string, string> = {
   superuser: '超级管理员',
-  teacher: '教师',
-  student: '学生',
 }
 
 export function DashboardPage() {
@@ -21,7 +19,7 @@ export function DashboardPage() {
     <div className="space-y-6">
       <PageHeader title="仪表盘" description="系统概览" />
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">用户总数</CardTitle>
@@ -56,17 +54,11 @@ export function DashboardPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">班级总数</CardTitle>
-            <School className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">权限模型</CardTitle>
+            <ShieldCheck className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {isLoading ? (
-              <Skeleton className="h-8 w-20" />
-            ) : (
-              <div className="text-2xl font-bold">
-                <CountUp end={stats?.total_classes ?? 0} duration={2} />
-              </div>
-            )}
+            <div className="text-2xl font-bold">RBAC</div>
           </CardContent>
         </Card>
 

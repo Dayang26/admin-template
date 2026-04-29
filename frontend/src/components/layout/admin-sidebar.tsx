@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, School, BookOpen, ClipboardList, ShieldCheck } from 'lucide-react'
+import { LayoutDashboard, Users, Shield, ClipboardList, ShieldCheck } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '@/lib/auth/context'
 import {
@@ -38,18 +38,6 @@ const navItems: NavItem[] = [
     permissions: ['user:read'],
   },
   {
-    title: '班级管理',
-    url: '/admin/classes',
-    icon: School,
-    permissions: ['class:read'],
-  },
-  {
-    title: '我的班级',
-    url: '/admin/my-classes',
-    icon: BookOpen,
-    permissions: ['class:read'],
-  },
-  {
     title: '操作日志',
     url: '/admin/audit-logs',
     icon: ClipboardList,
@@ -79,7 +67,7 @@ export function AdminSidebar() {
             <SidebarMenuButton size="lg" asChild>
               <Link to="/admin">
                 <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                  <School className="size-4" />
+                  <Shield className="size-4" />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-semibold">Carrier Agent</span>

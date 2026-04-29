@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 class Role(UUIDPrimaryKeyMixin, table=True):
     __tablename__ = "t_role"
 
-    name: str = Field(unique=True, max_length=50)  # superuser / teacher / student
+    name: str = Field(unique=True, max_length=50)
     description: str | None = Field(default=None, max_length=255)
 
     user_roles: list["UserRole"] = Relationship(back_populates="role")

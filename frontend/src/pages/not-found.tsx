@@ -3,16 +3,12 @@ import { FileQuestion } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { useAuth } from '@/lib/auth/context'
+import { getDefaultRoute } from '@/lib/auth/routes'
 
 export function NotFoundPage() {
   const { user } = useAuth()
 
-  const homeUrl =
-    user?.roles.includes('superuser') || user?.roles.includes('teacher')
-      ? '/admin'
-      : user
-        ? '/'
-        : '/login'
+  const homeUrl = user ? getDefaultRoute(user) : '/login'
 
   const homeLabel = user ? '返回首页' : '去登录'
 

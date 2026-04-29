@@ -3,7 +3,6 @@ import type { PermissionItem } from '../types/role'
 /** 资源名到中文标签的映射 */
 export const RESOURCE_LABELS: Record<string, string> = {
   user: '用户管理',
-  class: '班级管理',
   role: '角色管理',
   audit_log: '审计日志',
   dashboard: '仪表盘',

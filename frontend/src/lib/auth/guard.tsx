@@ -1,14 +1,16 @@
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from './context'
+import { getDefaultRoute } from './routes'
 import type { ReactNode } from 'react'
 
 interface RequireAuthProps {
   children: ReactNode
   roles?: string[]
+  permissions?: string[]
 }
 
-export function RequireAuth({ children, roles }: RequireAuthProps) {
-  const { user, isLoading, token } = useAuth()
+export function RequireAuth({ children, roles, permissions }: RequireAuthProps) {
+  const { user, isLoading, token, hasPermission } = useAuth()
   const location = useLocation()
 
   if (isLoading) {
@@ -31,11 +33,14 @@ export function RequireAuth({ children, roles }: RequireAuthProps) {
   if (roles && roles.length > 0) {
     const hasRole = roles.some((role) => user.roles.includes(role))
     if (!hasRole) {
-      // 根据用户实际角色重定向
-      if (user.roles.includes('student')) {
-        return <Navigate to="/" replace />
-      }
-      return <Navigate to="/admin" replace />
+      return <Navigate to={getDefaultRoute(user)} replace />
+    }
+  }
+
+  if (permissions && permissions.length > 0) {
+    const allowed = permissions.some((permission) => hasPermission(permission))
+    if (!allowed) {
+      return <Navigate to={getDefaultRoute(user)} replace />
     }
   }
 

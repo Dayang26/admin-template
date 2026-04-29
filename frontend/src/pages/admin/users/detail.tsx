@@ -208,25 +208,6 @@ export function UserDetailPage() {
           </div>
         </CardContent>
       </Card>
-
-      {/* 班级成员身份 */}
-      {user.class_memberships.length > 0 && (
-        <Card className="max-w-2xl">
-          <CardHeader>
-            <CardTitle>班级成员身份</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {user.class_memberships.map((cm) => (
-                <div key={cm.class_id} className="flex items-center justify-between rounded-md border p-3">
-                  <span>{cm.class_name}</span>
-                  <Badge variant="secondary">{cm.role}</Badge>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   )
 }

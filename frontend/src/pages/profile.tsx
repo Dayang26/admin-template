@@ -10,8 +10,10 @@ import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
+import { PageHeader } from '@/components/shared/page-header'
 import { useAuth } from '@/lib/auth/context'
 import { updateMe, changePassword } from '@/lib/api/me'
+import { getRoleLabel } from '@/lib/utils/role-labels'
 
 const nameSchema = z.object({
   full_name: z.string().max(255, '姓名最多 255 个字符').optional(),
@@ -30,12 +32,6 @@ const passwordSchema = z
 
 type NameForm = z.infer<typeof nameSchema>
 type PasswordForm = z.infer<typeof passwordSchema>
-
-const ROLE_LABELS: Record<string, string> = {
-  superuser: '超级管理员',
-  teacher: '教师',
-  student: '学生',
-}
 
 export function ProfilePage() {
   const { user } = useAuth()
@@ -100,10 +96,9 @@ export function ProfilePage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">个人中心</h1>
+      <PageHeader title="个人资料" description="查看和维护当前账号信息" />
 
-      {/* 基本信息 */}
-      <Card>
+      <Card className="max-w-2xl">
         <CardHeader>
           <CardTitle>基本信息</CardTitle>
         </CardHeader>
@@ -115,34 +110,23 @@ export function ProfilePage() {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">角色</p>
-              <div className="flex gap-1 mt-1">
-                {user.roles.map((role) => (
-                  <Badge key={role} variant="secondary">
-                    {ROLE_LABELS[role] ?? role}
-                  </Badge>
-                ))}
+              <div className="mt-1 flex flex-wrap gap-1">
+                {user.roles.length > 0 ? (
+                  user.roles.map((role) => (
+                    <Badge key={role} variant="secondary">
+                      {getRoleLabel(role)}
+                    </Badge>
+                  ))
+                ) : (
+                  <span className="text-sm text-muted-foreground">暂无角色</span>
+                )}
               </div>
             </div>
           </div>
-
-          {user.class_memberships.length > 0 && (
-            <div>
-              <p className="text-sm text-muted-foreground mb-2">班级</p>
-              <div className="space-y-1">
-                {user.class_memberships.map((cm) => (
-                  <div key={cm.class_id} className="flex items-center justify-between rounded-md border px-3 py-2">
-                    <span className="text-sm">{cm.class_name}</span>
-                    <Badge variant="outline">{cm.role}</Badge>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </CardContent>
       </Card>
 
-      {/* 编辑姓名 */}
-      <Card>
+      <Card className="max-w-2xl">
         <CardHeader>
           <CardTitle>编辑姓名</CardTitle>
         </CardHeader>
@@ -166,8 +150,7 @@ export function ProfilePage() {
 
       <Separator />
 
-      {/* 修改密码 */}
-      <Card>
+      <Card className="max-w-2xl">
         <CardHeader>
           <CardTitle>修改密码</CardTitle>
         </CardHeader>

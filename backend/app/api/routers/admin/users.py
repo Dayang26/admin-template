@@ -33,7 +33,6 @@ def get_users(
     email: str | None = Query(None, description="Filter by email (fuzzy)"),
     full_name: str | None = Query(None, description="Filter by full name (fuzzy)"),
     role: str | None = Query(None, description="Filter by role name"),
-    class_id: uuid.UUID | None = Query(None, description="Filter by class ID"),
 ) -> Response[Page[UserPublicWithRolesResp]]:
     """分页获取用户列表，支持多种筛选条件。"""
     from app.models.db import Role, UserRole
@@ -48,25 +47,16 @@ def get_users(
     if full_name:
         statement = statement.where(col(User.full_name).ilike(f"%{full_name}%"))
 
-    if role or class_id:
+    if role:
         statement = statement.join(UserRole, UserRole.user_id == User.id)
-        if role:
-            statement = statement.join(Role, UserRole.role_id == Role.id).where(Role.name == role)
-        if class_id:
-            statement = statement.where(UserRole.class_id == class_id)
+        statement = statement.join(Role, UserRole.role_id == Role.id).where(Role.name == role)
         statement = statement.distinct()
 
     def _transform_users(users: list[User]) -> list[UserPublicWithRolesResp]:
         result = []
         for user in users:
-            # 查询该用户的全局角色
-            role_names = [
-                ur.role.name
-                for ur in session.exec(
-                    select(UserRole).where(UserRole.user_id == user.id, UserRole.class_id == None)  # noqa: E711
-                ).all()
-                if ur.role
-            ]
+            # 查询该用户的角色
+            role_names = [ur.role.name for ur in session.exec(select(UserRole).where(UserRole.user_id == user.id)).all() if ur.role]
             resp = UserPublicWithRolesResp.model_validate(user)
             resp.roles = role_names
             result.append(resp)

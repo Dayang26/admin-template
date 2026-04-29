@@ -5,20 +5,17 @@
 2. 创建用户记录日志
 3. 更新用户记录日志
 4. 删除用户记录日志
-5. 创建班级记录日志
-6. 删除班级记录日志
-7. 添加班级成员记录日志
-8. 移除班级成员记录日志
-9. 更新个人资料记录日志
-10. 修改密码记录日志
-11. 日志查询接口（分页、筛选）
-12. 非 superuser 无法查看日志
+5. 更新个人资料记录日志
+6. 修改密码记录日志
+7. 日志查询接口（分页、筛选）
+8. 非 superuser 无法查看日志
 """
 
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
 from app.core.config import settings
+from app.models.db import Role
 from app.models.db.audit_log import AuditLog
 from tests.conftest import assert_error, assert_success
 
@@ -37,6 +34,15 @@ def _get_latest_audit_log(session: Session, action: str | None = None) -> AuditL
     if action:
         stmt = stmt.where(AuditLog.action == action)
     return session.exec(stmt).first()
+
+
+def _ensure_assignable_role(session: Session) -> str:
+    role_name = "audit_test_role"
+    role = session.exec(select(Role).where(Role.name == role_name)).first()
+    if not role:
+        session.add(Role(name=role_name, description="Audit test role"))
+        session.commit()
+    return role_name
 
 
 class TestLoginAuditLog:
@@ -84,6 +90,7 @@ class TestAdminUserAuditLog:
 
     def test_create_user_creates_audit_log(self, client: TestClient, session: Session, superuser_token_headers: dict):
         """创建用户应记录审计日志。"""
+        role_name = _ensure_assignable_role(session)
         before_count = _count_audit_logs(session, action="创建用户")
 
         response = client.post(
@@ -92,7 +99,7 @@ class TestAdminUserAuditLog:
             json={
                 "email": "audit_test_user@example.com",
                 "password": "testpassword123",
-                "roles": ["student"],
+                "roles": [role_name],
             },
         )
         assert response.status_code == 201
@@ -107,6 +114,7 @@ class TestAdminUserAuditLog:
 
     def test_update_user_creates_audit_log(self, client: TestClient, session: Session, superuser_token_headers: dict):
         """更新用户应记录审计日志。"""
+        role_name = _ensure_assignable_role(session)
         # 先创建一个用户
         create_resp = client.post(
             f"{settings.API_V1_STR}/admin/users/",
@@ -114,7 +122,7 @@ class TestAdminUserAuditLog:
             json={
                 "email": "audit_update_test@example.com",
                 "password": "testpassword123",
-                "roles": ["student"],
+                "roles": [role_name],
             },
         )
         user_id = create_resp.json()["data"]["id"]
@@ -137,6 +145,7 @@ class TestAdminUserAuditLog:
 
     def test_delete_user_creates_audit_log(self, client: TestClient, session: Session, superuser_token_headers: dict):
         """删除用户应记录审计日志。"""
+        role_name = _ensure_assignable_role(session)
         # 先创建一个用户
         create_resp = client.post(
             f"{settings.API_V1_STR}/admin/users/",
@@ -144,7 +153,7 @@ class TestAdminUserAuditLog:
             json={
                 "email": "audit_delete_test@example.com",
                 "password": "testpassword123",
-                "roles": ["student"],
+                "roles": [role_name],
             },
         )
         user_id = create_resp.json()["data"]["id"]
@@ -163,49 +172,6 @@ class TestAdminUserAuditLog:
         log = _get_latest_audit_log(session, action="删除用户")
         assert log is not None
         assert "audit_delete_test@example.com" in (log.detail or "")
-
-
-class TestClassAuditLog:
-    """班级操作日志测试。"""
-
-    def test_create_class_creates_audit_log(self, client: TestClient, session: Session, superuser_token_headers: dict):
-        """创建班级应记录审计日志。"""
-        before_count = _count_audit_logs(session, action="创建班级")
-
-        response = client.post(
-            f"{settings.API_V1_STR}/admin/classes/",
-            headers=superuser_token_headers,
-            json={"name": "审计测试班级", "description": "测试用"},
-        )
-        assert response.status_code == 201
-
-        after_count = _count_audit_logs(session, action="创建班级")
-        assert after_count == before_count + 1
-
-        log = _get_latest_audit_log(session, action="创建班级")
-        assert log is not None
-        assert "审计测试班级" in (log.detail or "")
-
-    def test_delete_class_creates_audit_log(self, client: TestClient, session: Session, superuser_token_headers: dict):
-        """删除班级应记录审计日志。"""
-        # 先创建
-        create_resp = client.post(
-            f"{settings.API_V1_STR}/admin/classes/",
-            headers=superuser_token_headers,
-            json={"name": "待删除审计班级"},
-        )
-        class_id = create_resp.json()["data"]["id"]
-
-        before_count = _count_audit_logs(session, action="删除班级")
-
-        response = client.delete(
-            f"{settings.API_V1_STR}/admin/classes/{class_id}",
-            headers=superuser_token_headers,
-        )
-        assert response.status_code == 200
-
-        after_count = _count_audit_logs(session, action="删除班级")
-        assert after_count == before_count + 1
 
 
 class TestSelfServiceAuditLog:

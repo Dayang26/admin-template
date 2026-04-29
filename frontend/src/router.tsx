@@ -1,21 +1,18 @@
 import { lazy, Suspense } from 'react'
-import { createBrowserRouter } from 'react-router-dom'
+import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { RequireAuth } from '@/lib/auth/guard'
 import { RootLayout } from '@/layouts/root-layout'
 import { AuthLayout } from '@/layouts/auth-layout'
 import { AdminLayout } from '@/layouts/admin-layout'
-import { StudentLayout } from '@/layouts/student-layout'
+import { UserLayout } from '@/layouts/user-layout'
 import { RouteErrorPage } from '@/pages/route-error'
 
 // 懒加载页面
 const LoginPage = lazy(() =>
   import('@/pages/login').then((m) => ({ default: m.LoginPage })),
 )
-const StudentHomePage = lazy(() =>
-  import('@/pages/student/home').then((m) => ({ default: m.StudentHomePage })),
-)
 const ProfilePage = lazy(() =>
-  import('@/pages/student/profile').then((m) => ({ default: m.ProfilePage })),
+  import('@/pages/profile').then((m) => ({ default: m.ProfilePage })),
 )
 const DashboardPage = lazy(() =>
   import('@/pages/admin/dashboard').then((m) => ({ default: m.DashboardPage })),
@@ -28,21 +25,6 @@ const UserCreatePage = lazy(() =>
 )
 const UserDetailPage = lazy(() =>
   import('@/pages/admin/users/detail').then((m) => ({ default: m.UserDetailPage })),
-)
-const ClassListPage = lazy(() =>
-  import('@/pages/admin/classes/list').then((m) => ({ default: m.ClassListPage })),
-)
-const ClassCreatePage = lazy(() =>
-  import('@/pages/admin/classes/create').then((m) => ({ default: m.ClassCreatePage })),
-)
-const ClassDetailPage = lazy(() =>
-  import('@/pages/admin/classes/detail').then((m) => ({ default: m.ClassDetailPage })),
-)
-const MyClassListPage = lazy(() =>
-  import('@/pages/admin/my-classes/list').then((m) => ({ default: m.MyClassListPage })),
-)
-const MyClassDetailPage = lazy(() =>
-  import('@/pages/admin/my-classes/detail').then((m) => ({ default: m.MyClassDetailPage })),
 )
 const AuditLogsPage = lazy(() =>
   import('@/pages/admin/audit-logs').then((m) => ({ default: m.AuditLogsPage })),
@@ -86,21 +68,17 @@ export const router = createBrowserRouter([
         ],
       },
 
-      // 学生路由
+      // 当前用户资料
       {
         element: (
-          <RequireAuth roles={['student']}>
-            <StudentLayout />
+          <RequireAuth>
+            <UserLayout />
           </RequireAuth>
         ),
         children: [
           {
             path: '/',
-            element: (
-              <SuspenseWrapper>
-                <StudentHomePage />
-              </SuspenseWrapper>
-            ),
+            element: <Navigate to="/profile" replace />,
           },
           {
             path: '/profile',
@@ -116,7 +94,7 @@ export const router = createBrowserRouter([
       // 管理端路由
       {
         element: (
-          <RequireAuth roles={['teacher', 'superuser']}>
+          <RequireAuth>
             <AdminLayout />
           </RequireAuth>
         ),
@@ -124,89 +102,61 @@ export const router = createBrowserRouter([
           {
             path: '/admin',
             element: (
-              <SuspenseWrapper>
-                <DashboardPage />
-              </SuspenseWrapper>
+              <RequireAuth permissions={['dashboard:read']}>
+                <SuspenseWrapper>
+                  <DashboardPage />
+                </SuspenseWrapper>
+              </RequireAuth>
             ),
           },
           {
             path: '/admin/users',
             element: (
-              <SuspenseWrapper>
-                <UserListPage />
-              </SuspenseWrapper>
+              <RequireAuth permissions={['user:read']}>
+                <SuspenseWrapper>
+                  <UserListPage />
+                </SuspenseWrapper>
+              </RequireAuth>
             ),
           },
           {
             path: '/admin/users/create',
             element: (
-              <SuspenseWrapper>
-                <UserCreatePage />
-              </SuspenseWrapper>
+              <RequireAuth permissions={['user:create']}>
+                <SuspenseWrapper>
+                  <UserCreatePage />
+                </SuspenseWrapper>
+              </RequireAuth>
             ),
           },
           {
             path: '/admin/users/:id',
             element: (
-              <SuspenseWrapper>
-                <UserDetailPage />
-              </SuspenseWrapper>
-            ),
-          },
-          {
-            path: '/admin/classes',
-            element: (
-              <SuspenseWrapper>
-                <ClassListPage />
-              </SuspenseWrapper>
-            ),
-          },
-          {
-            path: '/admin/classes/create',
-            element: (
-              <SuspenseWrapper>
-                <ClassCreatePage />
-              </SuspenseWrapper>
-            ),
-          },
-          {
-            path: '/admin/classes/:id',
-            element: (
-              <SuspenseWrapper>
-                <ClassDetailPage />
-              </SuspenseWrapper>
-            ),
-          },
-          {
-            path: '/admin/my-classes',
-            element: (
-              <SuspenseWrapper>
-                <MyClassListPage />
-              </SuspenseWrapper>
-            ),
-          },
-          {
-            path: '/admin/my-classes/:id',
-            element: (
-              <SuspenseWrapper>
-                <MyClassDetailPage />
-              </SuspenseWrapper>
+              <RequireAuth permissions={['user:read']}>
+                <SuspenseWrapper>
+                  <UserDetailPage />
+                </SuspenseWrapper>
+              </RequireAuth>
             ),
           },
           {
             path: '/admin/audit-logs',
             element: (
-              <SuspenseWrapper>
-                <AuditLogsPage />
-              </SuspenseWrapper>
+              <RequireAuth permissions={['audit_log:read']}>
+                <SuspenseWrapper>
+                  <AuditLogsPage />
+                </SuspenseWrapper>
+              </RequireAuth>
             ),
           },
           {
             path: '/admin/roles',
             element: (
-              <SuspenseWrapper>
-                <RolesPage />
-              </SuspenseWrapper>
+              <RequireAuth permissions={['role:read']}>
+                <SuspenseWrapper>
+                  <RolesPage />
+                </SuspenseWrapper>
+              </RequireAuth>
             ),
           },
         ],

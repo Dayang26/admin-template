@@ -1,5 +1,6 @@
 import { Navigate, Outlet } from 'react-router-dom'
 import { useAuth } from '@/lib/auth/context'
+import { getDefaultRoute } from '@/lib/auth/routes'
 
 export function AuthLayout() {
   const { user, isLoading } = useAuth()
@@ -14,21 +15,7 @@ export function AuthLayout() {
 
   // 已登录 — 根据权限重定向
   if (user) {
-    if (user.roles.includes('superuser')) {
-      return <Navigate to="/admin" replace />
-    }
-    if (user.roles.includes('teacher') || user.roles.includes('superuser')) {
-      // 有 dashboard 权限去仪表盘，否则去我的班级
-      const perms = user.permissions ?? []
-      if (perms.includes('dashboard:read')) {
-        return <Navigate to="/admin" replace />
-      }
-      if (perms.includes('class:read')) {
-        return <Navigate to="/admin/my-classes" replace />
-      }
-      return <Navigate to="/admin" replace />
-    }
-    return <Navigate to="/" replace />
+    return <Navigate to={getDefaultRoute(user)} replace />
   }
 
   return <Outlet />

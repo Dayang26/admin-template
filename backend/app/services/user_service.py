@@ -4,9 +4,8 @@ from fastapi import HTTPException
 from sqlmodel import Session, select
 
 from app.core.security import get_password_hash, verify_password
-from app.models.db import Class, Role, User, UserRole
+from app.models.db import Role, User, UserRole
 from app.schemas.user import (
-    ClassMembershipResp,
     UserCreateByAdminReq,
     UserCreateReq,
     UserDetailResp,
@@ -61,7 +60,7 @@ def create_user_with_roles(*, session: Session, user_create: UserCreateByAdminRe
     session.flush()
 
     for role in roles:
-        session.add(UserRole(user_id=db_obj.id, role_id=role.id, class_id=None))
+        session.add(UserRole(user_id=db_obj.id, role_id=role.id))
 
     session.commit()
     session.refresh(db_obj)
@@ -128,18 +127,15 @@ def update_user_by_admin(
         if missing:
             raise HTTPException(status_code=400, detail=f"Role(s) not found: {', '.join(sorted(missing))}")
 
-        # Delete old GLOBAL role associations (preserve class-level roles)
-        statement = select(UserRole).where(
-            UserRole.user_id == target_user_id,
-            UserRole.class_id == None,  # noqa: E711
-        )
+        # Delete old role associations
+        statement = select(UserRole).where(UserRole.user_id == target_user_id)
         old_user_roles = session.exec(statement).all()
         for old_user_role in old_user_roles:
             session.delete(old_user_role)
 
         # Create new role associations
         for role in roles:
-            session.add(UserRole(user_id=target_user_id, role_id=role.id, class_id=None))
+            session.add(UserRole(user_id=target_user_id, role_id=role.id))
 
     session.add(target_user)
     session.commit()
@@ -159,31 +155,20 @@ def update_user_me(*, session: Session, user_update: UserUpdateMeReq, current_us
 
 
 def get_user_detail(*, session: Session, user_id: uuid.UUID) -> UserDetailResp:
-    """Get user details including global roles, permissions and class memberships."""
+    """Get user details including roles and permissions."""
     user = session.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    global_roles = []
-    class_memberships = []
+    roles = []
 
     for user_role in user.user_roles:
-        if user_role.class_id is None:
-            if user_role.role:
-                global_roles.append(user_role.role.name)
-        else:
-            if user_role.role and user_role.class_:
-                class_memberships.append(
-                    ClassMembershipResp(
-                        class_id=user_role.class_id,
-                        class_name=user_role.class_.name,
-                        role=user_role.role.name,
-                    )
-                )
+        if user_role.role:
+            roles.append(user_role.role.name)
 
-    # 收集用户所有权限（通过全局角色的权限绑定）
+    # 收集用户所有权限（通过角色的权限绑定）
     permissions_set: set[str] = set()
-    for role_name in global_roles:
+    for role_name in roles:
         role = session.exec(select(Role).where(Role.name == role_name)).first()
         if role:
             for rp in role.role_permissions:
@@ -192,9 +177,8 @@ def get_user_detail(*, session: Session, user_id: uuid.UUID) -> UserDetailResp:
 
     return UserDetailResp(
         **user.model_dump(),
-        roles=global_roles,
+        roles=roles,
         permissions=sorted(permissions_set),
-        class_memberships=class_memberships,
     )
 
 
@@ -239,9 +223,3 @@ def update_user_password(*, session: Session, password_in: UserUpdatePasswordReq
     current_user.hashed_password = get_password_hash(password_in.new_password)
     session.add(current_user)
     session.commit()
-
-
-def get_teacher_classes(*, session: Session, teacher_id: uuid.UUID) -> list[Class]:
-    """Get all classes where the user has any role assigned."""
-    statement = select(Class).join(UserRole, UserRole.class_id == Class.id).where(UserRole.user_id == teacher_id).order_by(Class.name)
-    return list(session.exec(statement).all())

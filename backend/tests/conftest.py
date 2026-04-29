@@ -14,7 +14,7 @@ from app.core.db import init_db
 from app.core.security import create_access_token, get_password_hash
 from app.deps.db import get_db
 from app.main import app
-from app.models.db import Role, User, UserRole
+from app.models.db import User
 
 # backend/app 目录的绝对路径，用于定位 alembic.ini
 _APP_DIR = Path(__file__).resolve().parent.parent / "app"
@@ -134,14 +134,6 @@ def _get_superuser_token_headers(session: Session) -> dict[str, str]:
 
 
 def _get_normal_user_token_headers(session: Session) -> dict[str, str]:
-    # 创建 "teacher" 角色
-    teacher_role = session.exec(select(Role).where(Role.name == "teacher")).first()
-    if not teacher_role:
-        teacher_role = Role(name="teacher", description="Teacher role")
-        session.add(teacher_role)
-        session.commit()
-        session.refresh(teacher_role)
-
     # 创建普通用户
     normal_user = session.exec(select(User).where(User.email == "normal@example.com")).first()
     if not normal_user:
@@ -154,18 +146,6 @@ def _get_normal_user_token_headers(session: Session) -> dict[str, str]:
         session.add(normal_user)
         session.commit()
         session.refresh(normal_user)
-
-    # 分配 teacher 角色
-    existing_user_role = session.exec(
-        select(UserRole).where(
-            UserRole.user_id == normal_user.id,
-            UserRole.role_id == teacher_role.id,
-            UserRole.class_id.is_(None),
-        )
-    ).first()
-    if not existing_user_role:
-        session.add(UserRole(user_id=normal_user.id, role_id=teacher_role.id, class_id=None))
-        session.commit()
 
     access_token = create_access_token(subject=normal_user.id)
     return {"Authorization": f"Bearer {access_token}"}

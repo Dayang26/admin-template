@@ -17,8 +17,6 @@ interface AuthContextType {
   login: (token: string) => Promise<UserDetail | undefined>
   logout: () => void
   hasPermission: (permission: string) => boolean
-  isStudent: boolean
-  isTeacher: boolean
   isSuperuser: boolean
 }
 
@@ -26,8 +24,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserDetail | null>(null)
-  const [token, setToken] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [token, setToken] = useState<string | null>(() => localStorage.getItem('token'))
+  const [isLoading, setIsLoading] = useState(() => Boolean(localStorage.getItem('token')))
   const navigate = useNavigate()
 
   const fetchMe = useCallback(async () => {
@@ -63,14 +61,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [navigate])
 
   useEffect(() => {
-    const savedToken = localStorage.getItem('token')
-    if (savedToken) {
-      setToken(savedToken)
-      fetchMe()
-    } else {
-      setIsLoading(false)
+    if (token) {
+      queueMicrotask(() => {
+        void fetchMe()
+      })
     }
-  }, [fetchMe])
+  }, [fetchMe, token])
 
   const hasPermission = useCallback(
     (permission: string) => {
@@ -89,8 +85,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     login,
     logout,
     hasPermission,
-    isStudent: user?.roles.includes('student') ?? false,
-    isTeacher: user?.roles.includes('teacher') ?? false,
     isSuperuser: user?.roles.includes('superuser') ?? false,
   }
 

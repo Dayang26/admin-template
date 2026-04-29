@@ -32,7 +32,7 @@ class TestGetRoles:
         )
         data = assert_success(response)
         assert isinstance(data, list)
-        assert len(data) >= 3  # superuser, teacher, student
+        assert len(data) >= 1
 
         # 每个角色应包含 permissions 字段
         for role in data:
@@ -49,9 +49,7 @@ class TestGetRoles:
         )
         data = assert_success(response)
         builtin_names = {r["name"] for r in data if r["is_builtin"]}
-        assert "superuser" in builtin_names
-        assert "teacher" in builtin_names
-        assert "student" in builtin_names
+        assert builtin_names == {"superuser"}
 
     def test_get_roles_forbidden(self, client: TestClient, session: Session, normal_user_token_headers: dict):
         """非 superuser 无法获取角色列表。"""
@@ -82,7 +80,7 @@ class TestCreateRole:
         response = client.post(
             f"{settings.API_V1_STR}/admin/roles/",
             headers=superuser_token_headers,
-            json={"name": "teacher"},
+            json={"name": "superuser"},
         )
         assert_error(response, 400)
 
@@ -150,11 +148,11 @@ class TestDeleteRole:
 
     def test_delete_builtin_role_forbidden(self, client: TestClient, session: Session, superuser_token_headers: dict):
         """内置角色禁止删除。"""
-        teacher_role = session.exec(select(Role).where(Role.name == "teacher")).first()
-        assert teacher_role is not None
+        superuser_role = session.exec(select(Role).where(Role.name == "superuser")).first()
+        assert superuser_role is not None
 
         response = client.delete(
-            f"{settings.API_V1_STR}/admin/roles/{teacher_role.id}",
+            f"{settings.API_V1_STR}/admin/roles/{superuser_role.id}",
             headers=superuser_token_headers,
         )
         assert_error(response, 400)

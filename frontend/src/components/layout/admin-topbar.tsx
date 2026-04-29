@@ -15,9 +15,6 @@ const breadcrumbMap: Record<string, string> = {
   '/admin': '仪表盘',
   '/admin/users': '用户管理',
   '/admin/users/create': '创建用户',
-  '/admin/classes': '班级管理',
-  '/admin/classes/create': '创建班级',
-  '/admin/my-classes': '我的班级',
   '/admin/audit-logs': '操作日志',
   '/admin/roles': '角色管理',
 }
@@ -41,7 +38,7 @@ function getBreadcrumbs(pathname: string) {
     const sectionLabel = breadcrumbMap[sectionPath]
 
     if (segments.length === 2) {
-      // /admin/users 或 /admin/classes
+      // /admin/users
       if (sectionLabel) {
         crumbs.push({ label: sectionLabel })
       }

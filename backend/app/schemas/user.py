@@ -58,17 +58,8 @@ class UserUpdatePasswordReq(SQLModel):
     new_password: str = Field(min_length=8, max_length=128)
 
 
-class ClassMembershipResp(SQLModel):
-    """班级成员身份"""
-
-    class_id: uuid.UUID
-    class_name: str
-    role: str  # 在该班级中的角色
-
-
 class UserDetailResp(UserPublicResp):
-    """用户详情，包含角色、权限与班级归属"""
+    """用户详情，包含角色与权限"""
 
-    roles: list[str]  # 全局角色名列表
-    permissions: list[str] = Field(default_factory=list)  # 权限列表，如 ["user:read", "class:read"]
-    class_memberships: list[ClassMembershipResp]  # 班级级别的角色绑定
+    roles: list[str]
+    permissions: list[str] = Field(default_factory=list)  # 权限列表，如 ["user:read"]

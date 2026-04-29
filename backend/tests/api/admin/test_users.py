@@ -76,12 +76,12 @@ def test_get_users_pagination(client: TestClient, superuser_token_headers: dict[
 
 
 def test_get_users_normal_user_forbidden(client: TestClient, normal_user_token_headers: dict[str, str]) -> None:
-    """teacher 角色有 user:read 权限，可以访问用户列表。"""
+    """Normal users without user:read cannot access the user list."""
     response = client.get(
         f"{settings.API_V1_STR}/admin/users/",
         headers=normal_user_token_headers,
     )
-    assert response.status_code == 200
+    assert_error(response, 403)
 
 
 def test_get_users_unauthorized(client: TestClient) -> None:
@@ -137,11 +137,10 @@ def test_create_user_by_admin_assign_superuser(client: TestClient, superuser_tok
 
 
 def test_create_user_by_admin_normal_user_forbidden(client: TestClient, normal_user_token_headers: dict[str, str]) -> None:
-    """teacher 角色有 user:create 权限，但角色不存在会返回 400。"""
+    """Normal users without user:create cannot create users."""
     payload = {"email": "newuser4@example.com", "password": "securepassword", "roles": ["test_role"]}
     response = client.post(f"{settings.API_V1_STR}/admin/users/", headers=normal_user_token_headers, json=payload)
-    # teacher 有 user:create 权限，但 test_role 不存在，返回 400
-    assert_error(response, 400)
+    assert_error(response, 403)
 
 
 def test_create_user_by_admin_unauthorized(client: TestClient) -> None:
@@ -199,27 +198,27 @@ def test_update_user_by_admin_replace_roles(client: TestClient, superuser_token_
     from app.models.db import UserRole
 
     # Create test roles
-    role_teacher = Role(name="role_teacher", description="Teacher Role")
-    session.add(role_teacher)
-    role_student = Role(name="role_student", description="Student Role")
-    session.add(role_student)
+    role_old = Role(name="role_old", description="Old Role")
+    session.add(role_old)
+    role_new = Role(name="role_new", description="New Role")
+    session.add(role_new)
     session.commit()
-    session.refresh(role_teacher)
-    session.refresh(role_student)
+    session.refresh(role_old)
+    session.refresh(role_new)
 
-    # Create a test user with teacher role
+    # Create a test user with old role
     user = User(email="role_replace@example.com", hashed_password="password")
     session.add(user)
     session.commit()
     session.refresh(user)
 
-    # Assign teacher role
-    user_role = UserRole(user_id=user.id, role_id=role_teacher.id, class_id=None)
+    # Assign old role
+    user_role = UserRole(user_id=user.id, role_id=role_old.id)
     session.add(user_role)
     session.commit()
 
-    # Replace roles: remove teacher, add student
-    payload = {"roles": ["role_student"]}
+    # Replace roles: remove old role, add new role
+    payload = {"roles": ["role_new"]}
     response = client.patch(f"{settings.API_V1_STR}/admin/users/{user.id}", headers=superuser_token_headers, json=payload)
     assert_success(response)
 
@@ -227,8 +226,8 @@ def test_update_user_by_admin_replace_roles(client: TestClient, superuser_token_
     statement = select(UserRole).where(UserRole.user_id == user.id)
     user_roles = session.exec(statement).all()
     role_ids = [ur.role_id for ur in user_roles]
-    assert role_student.id in role_ids
-    assert role_teacher.id not in role_ids
+    assert role_new.id in role_ids
+    assert role_old.id not in role_ids
 
 
 def test_update_user_by_admin_superuser_forbidden(client: TestClient, superuser_token_headers: dict[str, str], session: Session) -> None:  # noqa: ARG001
@@ -247,7 +246,7 @@ def test_update_user_by_admin_superuser_forbidden(client: TestClient, superuser_
     session.refresh(target_user)
 
     # Assign superuser role to target
-    user_role = UserRole(user_id=target_user.id, role_id=role_superuser.id, class_id=None)
+    user_role = UserRole(user_id=target_user.id, role_id=role_superuser.id)
     session.add(user_role)
     session.commit()
 

@@ -5,14 +5,14 @@ from sqlmodel import select
 
 from app.deps import AuditInfo, SessionDep
 from app.deps.audit import log_audit
-from app.deps.auth import get_current_active_superuser
+from app.deps.permission import require_permission
 from app.models.db import Permission, Role, RolePermission
 from app.schemas import Response
 
 router = APIRouter(prefix="/admin/roles", tags=["admin/roles"])
 
 # 内置角色，禁止删除
-BUILTIN_ROLES = {"superuser", "teacher", "student"}
+BUILTIN_ROLES = {"superuser"}
 
 
 def _role_to_dict(role: Role, session) -> dict:
@@ -27,14 +27,14 @@ def _role_to_dict(role: Role, session) -> dict:
     }
 
 
-@router.get("/", dependencies=[Depends(get_current_active_superuser)])
+@router.get("/", dependencies=[Depends(require_permission("role", "read"))])
 def get_roles(session: SessionDep) -> Response[list[dict]]:
     """获取所有角色列表，包含权限信息。"""
     roles = session.exec(select(Role).order_by(Role.name)).all()
     return Response.ok(data=[_role_to_dict(r, session) for r in roles])
 
 
-@router.post("/", dependencies=[Depends(get_current_active_superuser)], status_code=201)
+@router.post("/", dependencies=[Depends(require_permission("role", "create"))], status_code=201)
 def create_role(
     *,
     session: SessionDep,
@@ -64,7 +64,7 @@ def create_role(
     return Response.ok(data=_role_to_dict(role, session), code=201)
 
 
-@router.patch("/{role_id}", dependencies=[Depends(get_current_active_superuser)])
+@router.patch("/{role_id}", dependencies=[Depends(require_permission("role", "update"))])
 def update_role(
     *,
     session: SessionDep,
@@ -102,7 +102,7 @@ def update_role(
     return Response.ok(data=_role_to_dict(role, session))
 
 
-@router.delete("/{role_id}", dependencies=[Depends(get_current_active_superuser)])
+@router.delete("/{role_id}", dependencies=[Depends(require_permission("role", "delete"))])
 def delete_role(
     *,
     session: SessionDep,
@@ -139,7 +139,7 @@ def delete_role(
     return Response.ok(data=None)
 
 
-@router.put("/{role_id}/permissions", dependencies=[Depends(get_current_active_superuser)])
+@router.put("/{role_id}/permissions", dependencies=[Depends(require_permission("role", "update"))])
 def update_role_permissions(
     *,
     session: SessionDep,
@@ -188,7 +188,7 @@ def update_role_permissions(
 # ---- 权限列表（只读） ----
 
 
-@router.get("/permissions", dependencies=[Depends(get_current_active_superuser)])
+@router.get("/permissions", dependencies=[Depends(require_permission("role", "read"))])
 def get_permissions(session: SessionDep) -> Response[list[dict]]:
     """获取所有权限列表（只读）。"""
     perms = session.exec(select(Permission).order_by(Permission.resource, Permission.action)).all()

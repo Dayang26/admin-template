@@ -14,7 +14,7 @@ def read_user_me(
     current_user: CurrentUser,
     session: SessionDep,
 ) -> Response[UserDetailResp]:
-    """获取当前用户详情，包含角色和班级归属。"""
+    """获取当前用户详情，包含角色和权限。"""
     user_detail = user_service.get_user_detail(session=session, user_id=current_user.id)
     return Response.ok(data=user_detail)
 

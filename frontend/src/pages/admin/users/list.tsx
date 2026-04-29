@@ -24,6 +24,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { PageHeader } from '@/components/shared/page-header'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { useUsers, useDeleteUser } from '@/lib/hooks/use-users'
+import { useRoles } from '@/lib/hooks/use-roles'
 import { getRoleLabel } from '@/lib/utils/role-labels'
 
 export function UserListPage() {
@@ -39,6 +40,7 @@ export function UserListPage() {
     email: search || undefined,
     role: roleFilter || undefined,
   })
+  const { data: roles } = useRoles()
 
   const deleteMutation = useDeleteUser()
 
@@ -96,9 +98,11 @@ export function UserListPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">全部角色</SelectItem>
-            <SelectItem value="superuser">超级管理员</SelectItem>
-            <SelectItem value="teacher">教师</SelectItem>
-            <SelectItem value="student">学生</SelectItem>
+            {roles?.map((role) => (
+              <SelectItem key={role.id} value={role.name}>
+                {getRoleLabel(role.name)}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>

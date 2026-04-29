@@ -32,7 +32,6 @@ def test_init_db_seeds_roles_permissions_and_superuser(session) -> None:
         select(UserRole).where(
             UserRole.user_id == superuser.id,
             UserRole.role_id == superuser_role.id,
-            UserRole.class_id.is_(None),
         )
     ).first()
     assert superuser_binding is not None
@@ -44,7 +43,7 @@ def test_init_db_is_idempotent(session) -> None:
         "role": len(session.exec(select(Role)).all()),
         "permission": len(session.exec(select(Permission)).all()),
         "role_permission": len(session.exec(select(RolePermission)).all()),
-        "superuser_bindings": len(session.exec(select(UserRole).join(Role, Role.id == UserRole.role_id).where(UserRole.class_id.is_(None), Role.name == "superuser")).all()),
+        "superuser_bindings": len(session.exec(select(UserRole).join(Role, Role.id == UserRole.role_id).where(Role.name == "superuser")).all()),
     }
 
     init_db(session)
@@ -52,7 +51,7 @@ def test_init_db_is_idempotent(session) -> None:
         "role": len(session.exec(select(Role)).all()),
         "permission": len(session.exec(select(Permission)).all()),
         "role_permission": len(session.exec(select(RolePermission)).all()),
-        "superuser_bindings": len(session.exec(select(UserRole).join(Role, Role.id == UserRole.role_id).where(UserRole.class_id.is_(None), Role.name == "superuser")).all()),
+        "superuser_bindings": len(session.exec(select(UserRole).join(Role, Role.id == UserRole.role_id).where(Role.name == "superuser")).all()),
     }
 
     assert counts_after == counts_before

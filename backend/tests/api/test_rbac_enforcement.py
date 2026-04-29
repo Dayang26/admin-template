@@ -51,7 +51,7 @@ def _create_user_with_custom_role(
     session.refresh(user)
 
     # 分配角色
-    session.add(UserRole(user_id=user.id, role_id=role.id, class_id=None))
+    session.add(UserRole(user_id=user.id, role_id=role.id))
     session.commit()
 
     token = create_access_token(subject=user.id)
@@ -69,17 +69,21 @@ class TestRBACUserModule:
 
     def test_user_without_read_permission_cannot_list_users(self, client: TestClient, session: Session):
         """没有 user:read 权限的用户无法查看用户列表。"""
-        headers = _create_user_with_custom_role(session, "rbac_no_user_read@test.com", "rbac_no_read", [("class", "read")])
+        headers = _create_user_with_custom_role(session, "rbac_no_user_read@test.com", "rbac_no_read", [("dashboard", "read")])
         response = client.get(f"{settings.API_V1_STR}/admin/users/", headers=headers)
         assert_error(response, 403)
 
     def test_user_with_create_permission_can_create_user(self, client: TestClient, session: Session):
         """拥有 user:create 权限的用户可以创建用户。"""
+        assignable_role = Role(name="rbac_assignable", description="Assignable test role")
+        session.add(assignable_role)
+        session.commit()
+
         headers = _create_user_with_custom_role(session, "rbac_user_creator@test.com", "rbac_creator", [("user", "create")])
         response = client.post(
             f"{settings.API_V1_STR}/admin/users/",
             headers=headers,
-            json={"email": "rbac_created@test.com", "password": "testpassword123", "roles": ["student"]},
+            json={"email": "rbac_created@test.com", "password": "testpassword123", "roles": ["rbac_assignable"]},
         )
         assert response.status_code == 201
 
@@ -88,26 +92,6 @@ class TestRBACUserModule:
         headers = _create_user_with_custom_role(session, "rbac_no_delete@test.com", "rbac_no_del", [("user", "read")])
         fake_id = uuid.uuid4()
         response = client.delete(f"{settings.API_V1_STR}/admin/users/{fake_id}", headers=headers)
-        assert_error(response, 403)
-
-
-class TestRBACClassModule:
-    """班级管理模块 RBAC 测试。"""
-
-    def test_user_with_class_read_can_list_classes(self, client: TestClient, session: Session):
-        """拥有 class:read 权限的用户可以查看班级列表。"""
-        headers = _create_user_with_custom_role(session, "rbac_class_reader@test.com", "rbac_cls_read", [("class", "read")])
-        response = client.get(f"{settings.API_V1_STR}/admin/classes/", headers=headers)
-        assert response.status_code == 200
-
-    def test_user_without_class_create_cannot_create(self, client: TestClient, session: Session):
-        """没有 class:create 权限的用户无法创建班级。"""
-        headers = _create_user_with_custom_role(session, "rbac_no_cls_create@test.com", "rbac_cls_ro", [("class", "read")])
-        response = client.post(
-            f"{settings.API_V1_STR}/admin/classes/",
-            headers=headers,
-            json={"name": "RBAC Test Class"},
-        )
         assert_error(response, 403)
 
 
@@ -136,20 +120,4 @@ class TestRBACDashboardAndAuditLog:
         """没有 audit_log:read 权限的用户无法查看审计日志。"""
         headers = _create_user_with_custom_role(session, "rbac_no_audit@test.com", "rbac_no_audit", [("user", "read")])
         response = client.get(f"{settings.API_V1_STR}/admin/audit-logs/", headers=headers)
-        assert_error(response, 403)
-
-
-class TestRBACTeacherModule:
-    """教师接口 RBAC 测试。"""
-
-    def test_user_with_class_read_can_access_teacher_endpoint(self, client: TestClient, session: Session):
-        """拥有 class:read 权限的用户可以访问教师接口。"""
-        headers = _create_user_with_custom_role(session, "rbac_teacher@test.com", "rbac_teacher_test", [("class", "read")])
-        response = client.get(f"{settings.API_V1_STR}/teacher/classes", headers=headers)
-        assert response.status_code == 200
-
-    def test_user_without_class_read_cannot_access_teacher_endpoint(self, client: TestClient, session: Session):
-        """没有 class:read 权限的用户无法访问教师接口。"""
-        headers = _create_user_with_custom_role(session, "rbac_no_teacher@test.com", "rbac_no_teacher", [("user", "read")])
-        response = client.get(f"{settings.API_V1_STR}/teacher/classes", headers=headers)
         assert_error(response, 403)

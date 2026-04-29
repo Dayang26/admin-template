@@ -7,16 +7,9 @@ export interface UserPublic {
   roles?: string[]
 }
 
-export interface ClassMembership {
-  class_id: string
-  class_name: string
-  role: string
-}
-
 export interface UserDetail extends UserPublic {
   roles: string[]
   permissions: string[]
-  class_memberships: ClassMembership[]
 }
 
 export interface LoginResponse {

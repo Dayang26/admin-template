@@ -14,15 +14,9 @@ logger = logging.getLogger(__name__)
 
 BUILTIN_ROLES: list[dict[str, str]] = [
     {"name": "superuser", "description": "Built-in unrestricted role"},
-    {"name": "teacher", "description": "Teacher role with restricted class-scoped operations"},
-    {"name": "student", "description": "Student role for self profile access"},
 ]
 
 BUILTIN_PERMISSIONS: list[dict[str, str]] = [
-    {"resource": "class", "action": "create"},
-    {"resource": "class", "action": "read"},
-    {"resource": "class", "action": "update"},
-    {"resource": "class", "action": "delete"},
     {"resource": "user", "action": "create"},
     {"resource": "user", "action": "read"},
     {"resource": "user", "action": "update"},
@@ -37,10 +31,6 @@ BUILTIN_PERMISSIONS: list[dict[str, str]] = [
 
 ROLE_PERMISSION_MAP: dict[str, list[tuple[str, str]]] = {
     "superuser": [
-        ("class", "create"),
-        ("class", "read"),
-        ("class", "update"),
-        ("class", "delete"),
         ("user", "create"),
         ("user", "read"),
         ("user", "update"),
@@ -52,12 +42,6 @@ ROLE_PERMISSION_MAP: dict[str, list[tuple[str, str]]] = {
         ("audit_log", "read"),
         ("dashboard", "read"),
     ],
-    "teacher": [
-        ("class", "read"),
-        ("user", "create"),
-        ("user", "read"),
-    ],
-    "student": [("user", "read")],
 }
 
 
@@ -135,11 +119,10 @@ def _ensure_superuser(session: Session, roles: dict[str, Role]) -> None:
         select(UserRole).where(
             UserRole.user_id == user.id,
             UserRole.role_id == superuser_role.id,
-            UserRole.class_id.is_(None),
         )
     ).first()
     if not user_role:
-        session.add(UserRole(user_id=user.id, role_id=superuser_role.id, class_id=None))
+        session.add(UserRole(user_id=user.id, role_id=superuser_role.id))
         session.commit()
         logger.info("Bound user %s to role %s", settings.FIRST_SUPERUSER, superuser_role.name)
 

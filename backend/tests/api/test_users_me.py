@@ -54,7 +54,7 @@ def test_read_user_me_success(client: TestClient, normal_user_token_headers: dic
     data = assert_success(response)
     assert data["email"] == "normal@example.com"
     assert "roles" in data
-    assert "class_memberships" in data
+    assert "permissions" in data
 
 
 def test_update_password_me_success(client: TestClient, normal_user_token_headers: dict[str, str], session: Session) -> None:  # noqa: ARG001

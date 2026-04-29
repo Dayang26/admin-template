@@ -9,7 +9,6 @@ export interface UserSearchParams {
   email?: string
   full_name?: string
   role?: string
-  class_id?: string
 }
 
 export interface UserCreateByAdminData {
@@ -35,7 +34,6 @@ export async function getUsers(params: UserSearchParams = {}): Promise<Paginated
   if (params.email) searchParams.set('email', params.email)
   if (params.full_name) searchParams.set('full_name', params.full_name)
   if (params.role) searchParams.set('role', params.role)
-  if (params.class_id) searchParams.set('class_id', params.class_id)
 
   const query = searchParams.toString()
   return apiClient<PaginatedData<UserPublic>>(`/api/v1/admin/users/${query ? `?${query}` : ''}`)
