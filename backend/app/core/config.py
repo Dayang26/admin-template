@@ -88,6 +88,11 @@ class Settings(BaseSettings):
         self._check_default_secret("SECRET_KEY", self.SECRET_KEY)
         self._check_default_secret("POSTGRES_PASSWORD", self.POSTGRES_PASSWORD)
         self._check_default_secret("FIRST_SUPERUSER_PASSWORD", self.FIRST_SUPERUSER_PASSWORD)
+        self.UPLOAD_PUBLIC_URL_PREFIX = self.UPLOAD_PUBLIC_URL_PREFIX.rstrip("/")
+        if not self.UPLOAD_PUBLIC_URL_PREFIX.startswith("/") or not self.UPLOAD_PUBLIC_URL_PREFIX:
+            raise ValueError("UPLOAD_PUBLIC_URL_PREFIX must start with '/' and cannot be empty.")
+        if self.UPLOAD_MAX_IMAGE_SIZE_MB <= 0:
+            raise ValueError("UPLOAD_MAX_IMAGE_SIZE_MB must be greater than 0.")
         return self
 
 

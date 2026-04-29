@@ -1,14 +1,14 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
+from fastapi.staticfiles import StaticFiles
 from fastapi_pagination import add_pagination
 from sqlmodel import Session
 from starlette.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from pathlib import Path
 
 from app.api.main import api_router
 from app.core.config import settings
@@ -94,16 +94,22 @@ async def unhandled_exception_handler(_request: Request, _exc: Exception) -> JSO
 app.include_router(api_router, prefix=settings.API_V1_STR)
 add_pagination(app)
 
-public_dir = Path(settings.UPLOAD_PUBLIC_DIR).resolve()
-private_dir = Path(settings.UPLOAD_PRIVATE_DIR).resolve()
-public_dir.mkdir(parents=True, exist_ok=True)
-private_dir.mkdir(parents=True, exist_ok=True)
 
-app.mount(
-    "/uploads/public",
-    StaticFiles(directory=public_dir),
-    name="uploads_public",
-)
+def mount_public_uploads(fastapi_app: FastAPI) -> None:
+    public_dir = Path(settings.UPLOAD_PUBLIC_DIR).resolve()
+    private_dir = Path(settings.UPLOAD_PRIVATE_DIR).resolve()
+    public_dir.mkdir(parents=True, exist_ok=True)
+    private_dir.mkdir(parents=True, exist_ok=True)
+
+    fastapi_app.mount(
+        settings.UPLOAD_PUBLIC_URL_PREFIX,
+        StaticFiles(directory=public_dir),
+        name="uploads_public",
+    )
+
+
+mount_public_uploads(app)
+
 
 @app.get("/")
 async def root():

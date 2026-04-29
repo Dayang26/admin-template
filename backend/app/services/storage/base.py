@@ -1,4 +1,5 @@
 from typing import Protocol
+
 from fastapi import UploadFile
 from sqlmodel import SQLModel
 
@@ -19,5 +20,6 @@ class StorageProvider(Protocol):
         visibility: str,
         extension: str,
         max_size_bytes: int,
-    ) -> StoredFile:
-        ...
+    ) -> StoredFile: ...
+
+    def delete(self, *, visibility: str, storage_key: str) -> None: ...

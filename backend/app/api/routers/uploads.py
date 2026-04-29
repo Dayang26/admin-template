@@ -1,14 +1,14 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Form, UploadFile as FastAPIUploadFile, File
-from sqlmodel import Session
+from fastapi import APIRouter, Depends, File, Form
+from fastapi import UploadFile as FastAPIUploadFile
 
 from app.deps.audit import AuditInfo
 from app.deps.auth import CurrentUser
 from app.deps.db import SessionDep
 from app.deps.permission import require_permission
 from app.schemas import Response
-from app.schemas.upload import UploadFileResp, UploadVisibility, UploadFileType
+from app.schemas.upload import UploadFileResp, UploadFileType, UploadVisibility
 from app.services import upload_service
 
 router = APIRouter(prefix="/uploads", tags=["uploads"])
@@ -25,9 +25,9 @@ def upload_file(
     current_user: CurrentUser,
     audit_info: AuditInfo,
     file: Annotated[FastAPIUploadFile, File(...)],
-    file_type: Annotated[str, Form()] = UploadFileType.image.value,
-    visibility: Annotated[str, Form()] = UploadVisibility.public.value,
-    purpose: Annotated[str | None, Form()] = None,
+    file_type: Annotated[str, Form(max_length=50)] = UploadFileType.image.value,
+    visibility: Annotated[str, Form(max_length=50)] = UploadVisibility.public.value,
+    purpose: Annotated[str | None, Form(max_length=100)] = None,
 ) -> Response[UploadFileResp]:
     result = upload_service.process_upload(
         session=session,

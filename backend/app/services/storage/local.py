@@ -67,11 +67,11 @@ class LocalStorageProvider(StorageProvider):
                 temp_path.unlink()
             raise e
         finally:
-            file.file.seek(0) # Reset file pointer
+            file.file.seek(0)  # Reset file pointer
 
         public_url = None
         if visibility == "public":
-            public_url = f"{settings.UPLOAD_PUBLIC_URL_PREFIX}/{storage_key}"
+            public_url = f"{settings.UPLOAD_PUBLIC_URL_PREFIX.rstrip('/')}/{storage_key}"
 
         return StoredFile(
             storage_provider="local",
@@ -80,3 +80,11 @@ class LocalStorageProvider(StorageProvider):
             size_bytes=size_bytes,
             sha256=sha256_hash.hexdigest(),
         )
+
+    def delete(self, *, visibility: str, storage_key: str) -> None:
+        base_dir = self._get_base_dir(visibility)
+        target_path = (base_dir / storage_key).resolve()
+        if not target_path.is_relative_to(base_dir):
+            raise HTTPException(status_code=400, detail="Invalid path")
+        if target_path.exists() and target_path.is_file():
+            target_path.unlink()

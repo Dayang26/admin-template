@@ -1,11 +1,10 @@
 from fastapi import APIRouter
 
-from app.api.routers import login, users
+from app.api.routers import login, uploads, users
 from app.api.routers.admin.audit_logs import router as admin_audit_logs_router
 from app.api.routers.admin.dashboard import router as admin_dashboard_router
 from app.api.routers.admin.roles import router as admin_roles_router
 from app.api.routers.admin.users import router as admin_users_router
-from app.api.routers import uploads
 from app.core.config import settings
 
 api_router = APIRouter()
