@@ -127,15 +127,19 @@ def update_user_by_admin(
         if missing:
             raise HTTPException(status_code=400, detail=f"Role(s) not found: {', '.join(sorted(missing))}")
 
-        # Delete old role associations
+        # Replace role associations without deleting/re-inserting unchanged rows.
         statement = select(UserRole).where(UserRole.user_id == target_user_id)
-        old_user_roles = session.exec(statement).all()
-        for old_user_role in old_user_roles:
-            session.delete(old_user_role)
+        existing_user_roles = session.exec(statement).all()
+        desired_role_ids = {role.id for role in roles}
+        existing_role_ids = {user_role.role_id for user_role in existing_user_roles}
 
-        # Create new role associations
+        for existing_user_role in existing_user_roles:
+            if existing_user_role.role_id not in desired_role_ids:
+                session.delete(existing_user_role)
+
         for role in roles:
-            session.add(UserRole(user_id=target_user_id, role_id=role.id))
+            if role.id not in existing_role_ids:
+                session.add(UserRole(user_id=target_user_id, role_id=role.id))
 
     session.add(target_user)
     session.commit()

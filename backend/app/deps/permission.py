@@ -29,7 +29,7 @@ def require_permission(resource: str, action: str) -> Callable[[SessionDep, Curr
         ).first()
 
         if not permission_match:
-            raise HTTPException(status_code=403, detail="Insufficient permissions")
+            raise HTTPException(status_code=403, detail="权限不足!")
         return current_user
 
     return checker

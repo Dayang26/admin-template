@@ -230,6 +230,33 @@ def test_update_user_by_admin_replace_roles(client: TestClient, superuser_token_
     assert role_old.id not in role_ids
 
 
+def test_update_user_by_admin_same_roles_no_duplicate(client: TestClient, superuser_token_headers: dict[str, str], session: Session) -> None:  # noqa: ARG001
+    """Updating profile fields with unchanged roles should not duplicate bindings."""
+    from sqlmodel import select
+
+    from app.models.db import UserRole
+
+    role = Role(name="role_unchanged", description="Unchanged Role")
+    session.add(role)
+    user = User(email="role_unchanged@example.com", hashed_password="password", full_name="Old Name")
+    session.add(user)
+    session.commit()
+    session.refresh(role)
+    session.refresh(user)
+
+    session.add(UserRole(user_id=user.id, role_id=role.id))
+    session.commit()
+
+    payload = {"full_name": "New Name", "roles": ["role_unchanged"]}
+    response = client.patch(f"{settings.API_V1_STR}/admin/users/{user.id}", headers=superuser_token_headers, json=payload)
+    data = assert_success(response)
+    assert data["full_name"] == "New Name"
+
+    user_roles = session.exec(select(UserRole).where(UserRole.user_id == user.id)).all()
+    assert len(user_roles) == 1
+    assert user_roles[0].role_id == role.id
+
+
 def test_update_user_by_admin_superuser_forbidden(client: TestClient, superuser_token_headers: dict[str, str], session: Session) -> None:  # noqa: ARG001
     """Test that a superuser cannot modify another superuser's information."""
     from sqlmodel import select

@@ -77,4 +77,4 @@ def test_require_permission_standard_user_forbidden(session: Session) -> None:
         checker(session=session, current_user=user)
 
     assert exc_info.value.status_code == 403
-    assert exc_info.value.detail == "Insufficient permissions"
+    assert exc_info.value.detail == "权限不足!"
