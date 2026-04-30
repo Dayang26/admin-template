@@ -1,0 +1,49 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:14-alpine
+    container_name: nos_agent_carrier_db
+    restart: always
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-changethis}
+      - POSTGRES_DB=${POSTGRES_DB:-app}
+    volumes:
+      - app-db-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: nos_agent_carrier_backend
+    restart: always
+    depends_on:
+      - db
+    env_file:
+      - .env
+    volumes:
+      - backend-uploads:/app/storage/uploads
+    ports:
+      - "8000:8000"
+    command: >
+      sh -c "uv run alembic -c app/alembic.ini upgrade head &&
+             uv run uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: nos_agent_carrier_frontend
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      # 映射为 5173 以保持和开发环境一致
+      - "5173:80"
+
+volumes:
+  app-db-data:
+  backend-uploads:

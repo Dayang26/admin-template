@@ -1,73 +1,41 @@
-# React + TypeScript + Vite
+# Admin Boilerplate - Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+基于 Vite + React 19 + TypeScript + Shadcn/ui 的现代化中后台管理模版前端。
 
-Currently, two official plugins are available:
+## 技术栈
+- **框架**: React 19 (SPA 客户端渲染)
+- **构建工具**: Vite
+- **语言**: TypeScript (Strict Mode)
+- **路由**: React Router v7
+- **UI 库**: Shadcn/ui (Radix UI + Tailwind CSS)
+- **数据请求**: TanStack Query (React Query)
+- **表单方案**: React Hook Form + Zod
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 快速开始
 
-## React Compiler
+### 1. 环境要求
+- Node.js 18+
+- pnpm 8+ (推荐)
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### 2. 安装依赖
+```bash
+pnpm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### 3. 开发环境运行
+```bash
+pnpm dev
 ```
+- 本地服务器默认运行在 `http://localhost:5173`。
+- Vite 已配置自动 Proxy：所有 `/api` 开头的请求将被直接代理到后端的 `http://localhost:8000`，无需额外配置 CORS 即可联调。
+
+### 4. 生产构建
+```bash
+pnpm build
+```
+静态资源将被输出到 `dist/` 目录。在使用 Nginx 等 Web 服务器部署时，请确保所有未匹配路由 fallback 回 `index.html`（以支持客户端路由）。
+
+## 开发与规范
+- **组件库**: UI 组件位于 `src/components/ui`（由 Shadcn CLI 管理）。自定义业务组件位于 `src/components/shared` 和 `src/components/layout`。
+- **状态管理**: 仅针对用户认证（`lib/auth`）和全局配置（`lib/system-settings`）使用 React Context，其余请求均由 TanStack Query 托管以自动管理缓存。
+- **代码规范**: 请遵循 `pnpm lint` 的校验，项目已接入 React Hooks 和 React Compiler 相关的 ESLint 校验规则。
