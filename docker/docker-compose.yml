@@ -1,4 +1,4 @@
-version: "3.8"
+
 
 services:
   db:
@@ -23,7 +23,11 @@ services:
     depends_on:
       - db
     env_file:
-      - .env
+      - ../.env
+    environment:
+      # Docker 网络中，数据库 host 必须使用服务名而非 localhost
+      POSTGRES_SERVER: db
+      POSTGRES_PORT: 5432
     volumes:
       - backend-uploads:/app/storage/uploads
     ports:

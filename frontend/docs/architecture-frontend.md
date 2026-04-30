@@ -17,10 +17,9 @@
 | 样式 | Tailwind CSS v4 | 原子化 CSS |
 | 数据请求 | TanStack Query (React Query) | 智能缓存、自动重试、分页支持 |
 | 状态管理 | React Context | 仅用于 Auth 及系统级基础配置 |
-| 主题 | ThemeProvider | 原生 CustomEvent 驱动的暗色/亮色解耦切换 |
+| 主题 | ThemeProvider | 基于 localStorage 和系统偏好控制 light/dark/system |
 | 表单 | React Hook Form + Zod | 高性能与强类型校验 |
 | HTTP 客户端 | fetch (原生) | 封装统一拦截器 (API Client) |
-| E2E/单元测试 | Playwright / Vitest | 质量保障 |
 
 ---
 
@@ -39,7 +38,7 @@ frontend/
 │   ├── components/                   # UI 组件体系
 │   │   ├── ui/                       # 基础组件 (通过 Shadcn 自动引入)
 │   │   ├── layout/                   # 布局组件 (Sidebar, Topbar, UserMenu)
-│   │   └── shared/                   # 通用业务组件 (DataTable, ConfirmDialog)
+│   │   └── shared/                   # 通用业务组件 (ConfirmDialog, ErrorBoundary, PageHeader)
 │   │
 │   ├── layouts/                      # 布局插槽
 │   │   ├── root-layout.tsx           # 最外层根布局 (挂载系统环境)
@@ -96,9 +95,9 @@ const router = createBrowserRouter([
 
 ### 3.2 RequireAuth 路由守卫
 前端在路由跃迁前，执行鉴权校验：
-- **无状态**：重定向回 `/login`，并携带当前页面的 URL 作为返回来源。
-- **角色检验**：组件接受可选的 `roles` 参数，自动校验当前用户信息，权限不足则渲染拦截 UI。
-- 当系统处于 API 获取登录状态的过程中，展示全局骨架屏防跳闪。
+- **未登录**：重定向回 `/login?returnUrl=...`，携带当前页面 URL 作为返回来源。
+- **已登录但权限不足**：通过 `permissions` 参数校验，权限不足时重定向至 `getDefaultRoute(user)`。
+- **加载态**：当系统处于 API 获取登录状态的过程中，展示全局骨架屏防跳闪。
 
 ---
 
@@ -130,11 +129,11 @@ export function useUsers(params: UserSearchParams) {
 采用自适应的 Flexbox 模型布局，配合 Shadcn 的 `SidebarProvider` 实现：
 - **Sidebar**：左侧动态导航栏，支持根据视口缩小折叠，适配移动端的抽屉式唤起。
 - **Topbar**：挂载全局面包屑、动态标题与系统工具栏（头像、退出登录）。
-- **Main Content**：利用 `React Router` 的 `<Outlet>` 做无刷新的子页面动态装载，并默认加入了平滑进入动画。
+- **Main Content**：利用 `React Router` 的 `<Outlet>` 做无刷新的子页面动态装载。
 
 ### 系统设置动态联动
 模板避免了臃肿繁杂的“界面过度配置”，而是通过 `SystemSettingsContext` 从接口轻量拉取核心业务设定（如：系统名称、系统 Logo）。
-- 使用**原生 `CustomEvent`** 无缝切入并通知 `ThemeProvider`，以非破坏性方式接管系统的默认色彩模式。
+- `ThemeProvider` 基于 `localStorage` 本地偏好和系统 `prefers-color-scheme` 控制 light/dark/system 主题。
 - `Document Title` 自动跟随系统的设定进行响应式更改。
 
 ---
@@ -145,7 +144,8 @@ export function useUsers(params: UserSearchParams) {
 整合 `react-countup` 等动效库，呈现系统概览数据，并在无权限时自动降级展现保护界面。
 
 ### 6.2 用户与权限管理 (User/Role/Audit Logs)
-- **复合搜索表格 (DataTable)**：结合灵活的多维度检索组件，适配后端分页，保障在大体量数据下渲染丝滑。
+- **用户管理**：提供用户 CRUD、多维搜索、角色分配等完整管理功能。
+- **角色管理**：提供角色 CRUD、权限绑定等管理功能。
 - **Audit Logs**：作为风控页展示系统内的审计追踪日志。
 
 ---
@@ -164,3 +164,13 @@ export default defineConfig({
 
 ### 部署规范
 生产环境下打包输出纯静态资产至 `dist`。配置 Nginx 时仅需将非命中资源指向 `index.html` 即可完成前端路由的无缝回退支持。
+
+---
+
+## 8. 待补工程能力
+
+以下能力当前尚未接入，建议在业务稳定后逐步补齐：
+
+- **前端单元测试**：Vitest + Testing Library
+- **E2E 测试**：Playwright
+- **通用 DataTable 组件**：基于 TanStack Table 封装可复用的数据表格

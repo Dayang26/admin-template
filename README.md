@@ -22,15 +22,17 @@
 ### 选项 A：使用 Docker 极速体验 (推荐)
 ```bash
 cp .env.example .env
-# 编辑 .env 修改密码等参数
-docker-compose -f docker/docker-compose.yml up -d --build
+# 编辑 .env 修改密码等参数（保持 POSTGRES_SERVER=localhost 即可，Docker 模式会自动覆盖）
+docker compose -f docker/docker-compose.yml up -d --build
 ```
 > 前端将运行在 `http://localhost:5173`，后端 API 运行在 `http://localhost:8000`。
+>
+> **注意**：Docker 模式下，`docker-compose.yml` 会自动将 `POSTGRES_SERVER` 覆盖为容器服务名 `db`，无需手动修改 `.env`。本地开发模式则使用 `.env` 中的 `localhost`。
 
 ### 选项 B：本地原生开发
 1. **环境准备**：安装 [Node.js 18+](https://nodejs.org/)、[pnpm](https://pnpm.io/)、[uv](https://docs.astral.sh/uv/) 和 PostgreSQL 数据库。
 2. **环境变量**：`cp .env.example .env` 并配置 `POSTGRES_PASSWORD`。
-3. **启动数据库**（可使用 docker 仅启动数据库）：`docker-compose -f docker/docker-compose.yml up -d db`
+3. **启动数据库**（可使用 docker 仅启动数据库）：`docker compose -f docker/docker-compose.yml up -d db`
 4. **数据库初始化与迁移**：
    ```bash
    make db-upgrade
@@ -47,8 +49,11 @@ docker-compose -f docker/docker-compose.yml up -d --build
 - **项目架构与原理**：参阅 [Backend Architecture](./backend/docs/architecture.md) 与 [Frontend Architecture](./frontend/docs/architecture-frontend.md)。
 - **如何增加新业务模块**：参阅 [RBAC 扩展指南](./docs/rbac-extension-guide.md)。
 - **本地运维与开发命令**：本项目提供根目录的 `Makefile`，常用命令：
-  - `make lint`: 运行全栈代码质量检查。
-  - `make test`: 运行全栈自动化测试。
+  - `make dev`: 并发启动前后端开发服务器。
+  - `make lint`: 运行前后端代码质量检查。
+  - `make test`: 运行后端自动化测试。
+  - `make build-frontend`: 执行前端生产构建。
+  - `make check`: 运行模板交付前综合检查（lint + test + build）。
   - `make db-revision`: 为后端修改的模型生成 Alembic 迁移脚本。
 
 ## 📄 协议

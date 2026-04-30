@@ -39,7 +39,7 @@
 - 数据大盘统计（Dashboard）
 - 全局系统配置动态管理（System Settings）
 - 分页查询与多维检索支持
-- 统一 API 响应结构（中间件自动包装）
+- 统一 API 响应结构（路由显式返回 Response[T]）
 
 项目采用清晰的分层架构，将路由、业务逻辑、数据访问、模型定义各自分离，具备良好的可维护性与扩展性。
 
@@ -92,8 +92,7 @@ backend/
 │   │   ├── auth.py               # 认证依赖
 │   │   ├── db.py                 # 数据库会话依赖
 │   │   └── permission.py         # RBAC 权限检查依赖
-│   ├── middleware/
-│   │   └── response.py           # 统一响应包装中间件
+│   ├── middleware/                # 中间件（预留扩展位）
 │   ├── models/
 │   │   └── db/
 │   │       ├── audit_log.py      # 审计日志表
@@ -125,8 +124,8 @@ backend/
 
 采用标准 Web 三层架构 + 强依赖注入：
 
-- **中间件层**：处理统一响应包装 (`UnifiedResponseMiddleware`)、CORS 以及全局异常拦截。
-- **路由层 (routers)**：处理 HTTP 规范，接收请求并返回模型，纯调度，无复杂业务。
+- **中间件层**：处理 CORS 以及全局异常拦截。
+- **路由层 (routers)**：处理 HTTP 规范，接收请求并显式返回 `Response.ok(data=...)`，纯调度，无复杂业务。
 - **服务层 (services)**：封装所有业务逻辑，供路由层调用。
 - **数据层 (models/db)**：由 SQLModel 定义关系与结构。
 - **横切依赖 (deps)**：将 Auth 解析、DB 会话获取、RBAC 校验等抽离为 FastAPI 依赖项注入到路由中。
@@ -198,7 +197,7 @@ t_user ──(1:N)── t_user_role ──(N:1)── t_role ──(1:N)── 
 
 ## 8. 统一响应结构
 
-为简化前端数据解析，使用**中间件级**统一数据包装：
+为简化前端数据解析，路由层显式返回统一响应模型：
 
 ```json
 {
@@ -209,16 +208,27 @@ t_user ──(1:N)── t_user_role ──(N:1)── t_role ──(1:N)── 
 ```
 
 机制：
-- 路由处理函数仍直接返回 ORM 对象或普通 dict。
-- `UnifiedResponseMiddleware` 捕获正常的 `2xx` 响应，自动嵌套一层 `ApiResp`。
+- 路由处理函数显式返回 `Response.ok(data=...)`，并声明 `response_model=Response[T]`。
 - 全局异常处理器 (ExceptionHandler) 捕获 4xx/5xx，输出对应 code 且 data 为 `null`。
 - 特例：遵循 OAuth2 标准的 `/login/access-token` 豁免包装。
+
+示例：
+```python
+@router.get("/me", response_model=Response[UserDetailResp])
+def read_user_me(current_user: CurrentUser, session: SessionDep) -> Response[UserDetailResp]:
+    user_detail = user_service.get_user_detail(session=session, user=current_user)
+    return Response.ok(data=user_detail)
+```
 
 ---
 
 ## 9. 测试架构
 
-后端具备极高的测试标准，测试覆盖率要求 100%。
+后端已有 API、service、deps、core 初始化测试。模板新增业务模块时至少补：
+- 授权成功路径
+- 未授权/越权路径
+- 关键数据校验失败路径
+- 增删改操作的审计日志路径
 
 - **测试组件**：`pytest` + `pytest-cov`
 - **隔离机制**：
@@ -228,7 +238,7 @@ t_user ──(1:N)── t_user_role ──(N:1)── t_role ──(1:N)── 
 
 ```bash
 # 启动测试
-cd backend && uv run pytest --cov=app tests/
+cd backend && uv run pytest tests/
 ```
 
 ---

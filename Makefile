@@ -1,4 +1,4 @@
-.PHONY: dev dev-backend dev-frontend test test-backend test-frontend lint lint-backend lint-frontend build-frontend db-upgrade db-revision
+.PHONY: dev dev-backend dev-frontend test test-backend lint lint-backend lint-frontend build-frontend check db-upgrade db-revision
 
 dev-backend:
 	cd backend && uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
@@ -14,10 +14,7 @@ dev:
 test-backend:
 	cd backend && uv run pytest tests/
 
-test-frontend:
-	cd frontend && pnpm test
-
-test: test-backend test-frontend
+test: test-backend
 
 lint-backend:
 	cd backend && uv run ruff check .
@@ -29,6 +26,8 @@ lint: lint-backend lint-frontend
 
 build-frontend:
 	cd frontend && pnpm build
+
+check: lint test build-frontend
 
 db-upgrade:
 	cd backend && uv run alembic -c app/alembic.ini upgrade head
