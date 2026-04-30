@@ -1,111 +1,111 @@
 # AGENTS.md
 
-This repository is a reusable admin boilerplate, not a business application.
-All agents working in this repo must keep the template small, generic, and easy to fork.
+本仓库是一个可复用的后台管理系统样板（Boilerplate），而非具体的业务应用。
+所有在此仓库中工作的 Agent 必须保持模板轻量、通用且易于派生（Fork）。
 
-## Product Boundary
+## 产品边界
 
-- Treat this project as a generic RBAC admin template.
-- Do not add domain-specific concepts such as classes, courses, orders, products, tenants, carriers, teachers, students, workflows, or billing unless the user explicitly asks for that business module.
-- Keep built-in features limited to common admin infrastructure:
-  - authentication and current-user profile
-  - user management
-  - role and permission management
-  - audit logs
-  - dashboard overview
-  - image upload for public branding assets
-  - system branding settings
-- System settings are only for branding and public display data:
-  - system name
-  - tagline
-  - copyright
-  - page title template
-  - light/dark logo
-  - favicon
-  - login background image
-- Do not put frontend runtime behavior into system settings. Layout mode, default home path, request timeout, mock switches, keep-alive, route cache, animations, token expiry, SSO, captcha, and password policy belong in source code, environment variables, or future explicit feature work.
+- 将此项目视为一个通用的 RBAC（基于角色的访问控制）管理后台模板。
+- 除非用户明确要求增加业务模块，否则请勿添加特定领域的概念，如：班级、课程、订单、产品、租户、承运商、教师、学生、工作流或计费。
+- 保持内置功能仅限于常见的管理基础设施：
+    - 身份验证及当前用户信息
+    - 用户管理
+    - 角色与权限管理
+    - 审计日志
+    - 仪表盘概览
+    - 公共品牌资产的图片上传
+    - 系统品牌设置
+- 系统设置仅用于品牌化和公共显示数据：
+    - 系统名称
+    - 标语（Tagline）
+    - 版权信息
+    - 页面标题模板
+    - 浅色/深色 Logo
+    - 网站图标（Favicon）
+    - 登录页背景图
+- 请勿将前端运行时行为放入系统设置。布局模式、默认首页路径、请求超时、Mock 开关、Keep-alive、路由缓存、动画、Token 过期时间、SSO、验证码及密码策略应属于源代码、环境变量或未来的明确功能开发范畴。
 
-## Avoid Overengineering
+## 避免过度设计
 
-- Prefer simple static configuration over dynamic database-driven configuration unless there is a concrete user request.
-- Do not implement a full dictionary management system for this template by default.
-- For labels and small option lists, use local frontend mapping files near the relevant feature.
-- Only consider a database-backed dictionary system inside a real business project that needs non-developer operators to edit enum values at runtime.
-- Do not add Redis, queues, background workers, SSO, email, SMS, webhooks, feature flags, or cloud storage providers as placeholders. Add them only when the feature is fully implemented and tested.
+- 除非有具体的开发请求，否则优先选择简单的静态配置，而非动态的数据库驱动配置。
+- 默认情况下，不要为此模板实现完整的字典管理系统。
+- 对于标签和小型选项列表，请在相关功能附近使用本地前端映射文件。
+- 仅在真实的业务项目中考虑使用数据库支持的字典系统，因为这类项目需要非开发人员在运行时编辑枚举值。
+- 不要添加 Redis、队列、后台任务、SSO、邮件、短信、Webhook、功能开关（Feature Flags）或云存储提供商作为占位符。只有在功能完全实现并测试后才添加它们。
 
-## Backend Rules
+## 后端规则
 
-- Framework: FastAPI + SQLModel + PostgreSQL + Alembic.
-- Use explicit response models and `Response.ok(...)`; do not reintroduce automatic response-wrapping middleware unless the whole router layer is intentionally refactored.
-- Protect admin routes with `require_permission(resource, action)`.
-- Keep `superuser` as the only built-in role unless the user explicitly asks for more built-in roles.
-- New permissions must be seeded in `backend/app/core/db.py` and included in tests.
-- New database models must be imported from `backend/app/models/db/__init__.py` so Alembic can detect them.
-- Every model change must include an Alembic migration.
-- Admin create/update/delete operations should write audit logs.
-- Uploads must remain conservative:
-  - local storage is the default
-  - public uploads are directly served
-  - private uploads require future explicit authenticated download work
-  - validate extension, MIME type, file signature, file size, and field lengths
-  - clean up saved files if DB persistence fails
-- Do not store cloud provider secrets in database-backed admin settings unless a secure secret-management design is explicitly requested.
+- 框架：FastAPI + SQLModel + PostgreSQL + Alembic。
+- 使用明确的响应模型和 `Response.ok(...)`；除非有目的地重构整个路由层，否则不要重新引入自动包装响应的中间件。
+- 使用 `require_permission(resource, action)` 保护管理路由。
+- 除非用户明确要求更多内置角色，否则保持 `superuser` 为唯一的内置角色。
+- 新权限必须在 `backend/app/core/db.py` 中进行种子设定（Seed），并包含在测试中。
+- 新的数据库模型必须从 `backend/app/models/db/__init__.py` 导入，以便 Alembic 能够检测到它们。
+- 每次模型变更都必须包含 Alembic 迁移。
+- 管理后台的创建/更新/删除操作应写入审计日志。
+- 上传功能必须保持保守：
+    - 默认使用本地存储
+    - 公共上传内容直接提供访问
+    - 私有上传内容需要未来显式的身份验证下载逻辑
+    - 验证扩展名、MIME 类型、文件签名、文件大小及字段长度
+    - 如果数据库持久化失败，请清理已保存的文件
+- 除非明确要求安全的密钥管理设计，否则不要在数据库支持的管理设置中存储云服务商的密钥。
 
-## Frontend Rules
+## 前端规则
 
-- Framework: React + Vite + TypeScript + Tailwind CSS + shadcn-style components.
-- Keep route guards permission-based. Sidebar visibility and route access must use the same permission model.
-- Do not add role-only admin guards when a permission guard is available.
-- Keep admin layout fixed as the template layout. Do not add dynamic layout configuration without explicit user request.
-- Theme selection is a local frontend preference, not a backend system setting.
-- System branding can be read from public system settings and used for title, logo, favicon, login background, and display text.
-- Prefer small, feature-local utilities over global abstractions.
-- Do not add a generic DataTable, dictionary framework, or form framework unless at least two real screens need it.
-- Do not keep unused default Vite assets, unused dependencies, or demo code.
+- 框架：React + Vite + TypeScript + Tailwind CSS + shadcn 风格组件。
+- 保持基于权限的路由守卫。侧边栏可见性和路由访问必须使用相同的权限模型。
+- 当有权限守卫可用时，不要添加仅限角色的管理守卫。
+- 保持管理布局为固定的模板布局。未经用户明确要求，不要添加动态布局配置。
+- 主题选择是前端本地偏好，而非后端系统设置。
+- 系统品牌信息可以从公共系统设置中读取，并用于标题、Logo、网站图标、登录页背景和显示文本。
+- 优先选择小型的、功能局部的工具函数，而非全局抽象。
+- 除非至少有两个真实的页面需要，否则不要添加通用的 DataTable、字典框架或表单框架。
+- 不要保留未使用的默认 Vite 资产、未使用的依赖或演示代码。
 
-## Documentation Rules
+## 文档规则
 
-- Documentation must describe the current implementation, not aspirational features.
-- If a capability is not implemented, put it under a clear "future work" or "optional extension" section.
-- Keep README, template guide, architecture docs, Docker docs, and Makefile commands consistent.
-- When adding or removing a command, update the docs in the same change.
-- RBAC extension examples must match current backend style:
-  - `response_model=Response[...]`
-  - `Response.ok(...)`
-  - `SessionDep`
-  - `AuditInfo`
-  - `log_audit(session, ...)`
-- Do not document frontend tests, E2E, Redis, email, SSO, or dynamic dictionaries as existing capabilities unless they are actually implemented.
+- 文档必须描述当前的实现，而非预期的功能。
+- 如果某个功能尚未实现，请将其放在清晰的“未来工作”或“可选扩展”部分下。
+- 保持 README、模板指南、架构文档、Docker 文档和 Makefile 命令的一致性。
+- 在添加或删除命令时，请在同一次变更中更新文档。
+- RBAC 扩展示例必须符合当前的后端风格：
+    - `response_model=Response[...]`
+    - `Response.ok(...)`
+    - `SessionDep`
+    - `AuditInfo`
+    - `log_audit(session, ...)`
+- 除非确实已实现，否则不要将前端测试、E2E、Redis、邮件、SSO 或动态字典记录为现有功能。
 
-## Testing And Verification
+## 测试与验证
 
-Run targeted checks for the area you touched.
+针对你修改的领域运行特定检查。
 
-Backend:
+后端：
 
 ```bash
 cd backend && uv run ruff check app tests
 cd backend && uv run pytest tests/
 ```
 
-Frontend:
+前端：
 
 ```bash
 cd frontend && pnpm lint
 cd frontend && pnpm build
 ```
 
-General:
+通用：
 
 ```bash
 git diff --check
 ```
 
-If a command is documented in README or Makefile, it must work in a fresh checkout after dependencies are installed.
+如果某个命令在 README 或 Makefile 中有记录，那么在安装依赖后的全新检出（Checkout）中它必须能够正常工作。
 
-## Git Hygiene
+## Git 规范
 
-- Do not commit `.env`, local database files, generated coverage reports, build output, dependency folders, or IDE-private files.
-- `.idea/`, `frontend/dist/`, `frontend/node_modules/`, backend caches, and upload storage should stay ignored.
-- Do not remove or overwrite user changes unless explicitly asked.
-- Keep changes scoped to the requested task.
+- 不要提交 `.env`、本地数据库文件、生成的覆盖率报告、构建产物、依赖文件夹或 IDE 私有文件。
+- `.idea/`、`frontend/dist/`、`frontend/node_modules/`、后端缓存及上传存储应保持忽略。
+- 除非明确要求，否则不要删除或覆盖用户的更改。
+- 保持更改范围限于请求的任务。
