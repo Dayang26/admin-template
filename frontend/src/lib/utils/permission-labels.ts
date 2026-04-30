@@ -6,6 +6,7 @@ export const RESOURCE_LABELS: Record<string, string> = {
   role: '权限管理',
   audit_log: '审计日志',
   dashboard: '仪表盘',
+  system_setting: '系统设置',
 }
 
 /** 操作名到中文标签的映射 */
@@ -14,6 +15,13 @@ export const ACTION_LABELS: Record<string, string> = {
   read: '查看',
   update: '编辑',
   delete: '删除',
+  update_system_name: '系统名称',
+  update_tagline: '标题语',
+  update_copyright: '版权信息',
+  update_page_title_template: '浏览器标题模板',
+  upload_logo: 'Logo',
+  upload_favicon: 'Favicon',
+  upload_login_background: '登录背景图',
 }
 
 /** 获取资源的中文显示名称 */

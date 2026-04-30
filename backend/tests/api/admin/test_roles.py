@@ -213,6 +213,41 @@ class TestPermissions:
         data = assert_success(response)
         assert len(data["permissions"]) == 2
 
+    def test_update_role_permissions_replaces_existing_bindings(self, client: TestClient, session: Session, superuser_token_headers: dict):
+        """重复保存包含已有权限的权限集不会触发唯一约束冲突。"""
+        create_resp = client.post(
+            f"{settings.API_V1_STR}/admin/roles/",
+            headers=superuser_token_headers,
+            json={"name": "perm_replace_role"},
+        )
+        role_id = create_resp.json()["data"]["id"]
+
+        perms_resp = client.get(
+            f"{settings.API_V1_STR}/admin/roles/permissions",
+            headers=superuser_token_headers,
+        )
+        all_perms = perms_resp.json()["data"]
+        first_perm_ids = [all_perms[0]["id"], all_perms[1]["id"]]
+        second_perm_ids = [all_perms[0]["id"], all_perms[1]["id"], all_perms[2]["id"]]
+
+        first_response = client.put(
+            f"{settings.API_V1_STR}/admin/roles/{role_id}/permissions",
+            headers=superuser_token_headers,
+            json={"permission_ids": first_perm_ids},
+        )
+        assert_success(first_response)
+
+        second_response = client.put(
+            f"{settings.API_V1_STR}/admin/roles/{role_id}/permissions",
+            headers=superuser_token_headers,
+            json={"permission_ids": second_perm_ids},
+        )
+        data = assert_success(second_response)
+        assert len(data["permissions"]) == 3
+
+        bindings = session.exec(select(RolePermission).where(RolePermission.role_id == uuid.UUID(role_id))).all()
+        assert len(bindings) == 3
+
     def test_update_role_permissions_clear(self, client: TestClient, session: Session, superuser_token_headers: dict):
         """传空数组清除角色所有权限。"""
         create_resp = client.post(

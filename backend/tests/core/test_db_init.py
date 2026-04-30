@@ -1,7 +1,7 @@
 from sqlmodel import select
 
 from app.core.config import settings
-from app.core.db import BUILTIN_PERMISSIONS, BUILTIN_ROLES, ROLE_PERMISSION_MAP, init_db
+from app.core.db import BUILTIN_PERMISSIONS, BUILTIN_ROLES, OBSOLETE_PERMISSIONS, ROLE_PERMISSION_MAP, init_db
 from app.models.db import Permission, Role, RolePermission, User, UserRole
 
 
@@ -55,3 +55,27 @@ def test_init_db_is_idempotent(session) -> None:
     }
 
     assert counts_after == counts_before
+
+
+def test_init_db_removes_obsolete_permissions(session) -> None:
+    init_db(session)
+    role = session.exec(select(Role).where(Role.name == "superuser")).one()
+
+    obsolete_permission_ids = []
+    for resource, action in OBSOLETE_PERMISSIONS:
+        permission = Permission(resource=resource, action=action)
+        session.add(permission)
+        session.commit()
+        session.refresh(permission)
+        obsolete_permission_ids.append(permission.id)
+        session.add(RolePermission(role_id=role.id, permission_id=permission.id))
+        session.commit()
+
+    init_db(session)
+
+    for resource, action in OBSOLETE_PERMISSIONS:
+        permission = session.exec(select(Permission).where(Permission.resource == resource, Permission.action == action)).first()
+        assert permission is None
+
+    bindings = session.exec(select(RolePermission).where(RolePermission.permission_id.in_(obsolete_permission_ids))).all()
+    assert bindings == []

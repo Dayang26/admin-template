@@ -167,6 +167,7 @@ def update_role_permissions(
     old_rps = session.exec(select(RolePermission).where(RolePermission.role_id == role_id)).all()
     for rp in old_rps:
         session.delete(rp)
+    session.flush()
 
     # 创建新绑定
     for perm in permissions:

@@ -33,7 +33,7 @@ def _saved_files(root: Path) -> list[Path]:
 
 def test_upload_image_success(client: TestClient, superuser_token_headers: dict[str, str]) -> None:
     files = {"file": ("test.png", _png_content(), "image/png")}
-    data = {"file_type": "image", "visibility": "public"}
+    data = {"file_type": "image", "visibility": "public", "purpose": "system_setting_logo"}
 
     response = client.post(
         f"{settings.API_V1_STR}/uploads",
@@ -50,7 +50,7 @@ def test_upload_image_success(client: TestClient, superuser_token_headers: dict[
 
 def test_upload_image_unauthorized(client: TestClient) -> None:
     files = {"file": ("test.png", _png_content(), "image/png")}
-    data = {"file_type": "image", "visibility": "public"}
+    data = {"file_type": "image", "visibility": "public", "purpose": "system_setting_logo"}
 
     response = client.post(
         f"{settings.API_V1_STR}/uploads",
@@ -62,7 +62,7 @@ def test_upload_image_unauthorized(client: TestClient) -> None:
 
 def test_upload_image_normal_user_forbidden(client: TestClient, normal_user_token_headers: dict[str, str]) -> None:
     files = {"file": ("test.png", _png_content(), "image/png")}
-    data = {"file_type": "image", "visibility": "public"}
+    data = {"file_type": "image", "visibility": "public", "purpose": "system_setting_logo"}
 
     response = client.post(
         f"{settings.API_V1_STR}/uploads",
@@ -73,9 +73,47 @@ def test_upload_image_normal_user_forbidden(client: TestClient, normal_user_toke
     assert response.status_code == 403
 
 
+def test_upload_requires_matching_purpose_permission(client: TestClient, session: Session) -> None:
+    permission = session.exec(select(Permission).where(Permission.resource == "system_setting", Permission.action == "upload_favicon")).first()
+    assert permission is not None
+
+    role = Role(name=f"favicon_uploader_{uuid.uuid4().hex[:8]}", description="Favicon uploader")
+    user = User(
+        email=f"favicon_uploader_{uuid.uuid4().hex[:8]}@example.com",
+        hashed_password=get_password_hash("password1234"),
+        is_active=True,
+    )
+    session.add(role)
+    session.add(user)
+    session.commit()
+    session.refresh(role)
+    session.refresh(user)
+    session.add(RolePermission(role_id=role.id, permission_id=permission.id))
+    session.add(UserRole(user_id=user.id, role_id=role.id))
+    session.commit()
+
+    headers = {"Authorization": f"Bearer {create_access_token(subject=user.id)}"}
+
+    logo_response = client.post(
+        f"{settings.API_V1_STR}/uploads",
+        headers=headers,
+        files={"file": ("test.png", _png_content(), "image/png")},
+        data={"file_type": "image", "visibility": "public", "purpose": "system_setting_logo"},
+    )
+    assert logo_response.status_code == 403
+
+    favicon_response = client.post(
+        f"{settings.API_V1_STR}/uploads",
+        headers=headers,
+        files={"file": ("test.png", _png_content(), "image/png")},
+        data={"file_type": "image", "visibility": "public", "purpose": "system_setting_favicon"},
+    )
+    assert_success(favicon_response, 201)
+
+
 def test_upload_image_wrong_extension(client: TestClient, superuser_token_headers: dict[str, str]) -> None:
     files = {"file": ("test.txt", b"fake", "text/plain")}
-    data = {"file_type": "image", "visibility": "public"}
+    data = {"file_type": "image", "visibility": "public", "purpose": "system_setting_logo"}
 
     response = client.post(
         f"{settings.API_V1_STR}/uploads",
@@ -90,7 +128,7 @@ def test_upload_image_wrong_extension(client: TestClient, superuser_token_header
 def test_upload_image_wrong_signature(client: TestClient, superuser_token_headers: dict[str, str]) -> None:
     content = b"fake png data here that does not start with correct header"
     files = {"file": ("test.png", content, "image/png")}
-    data = {"file_type": "image", "visibility": "public"}
+    data = {"file_type": "image", "visibility": "public", "purpose": "system_setting_logo"}
 
     response = client.post(
         f"{settings.API_V1_STR}/uploads",
@@ -104,7 +142,7 @@ def test_upload_image_wrong_signature(client: TestClient, superuser_token_header
 
 def test_upload_private_image(client: TestClient, superuser_token_headers: dict[str, str]) -> None:
     files = {"file": ("test.jpg", _jpg_content(), "image/jpeg")}
-    data = {"file_type": "image", "visibility": "private"}
+    data = {"file_type": "image", "visibility": "private", "purpose": "system_setting_logo"}
 
     response = client.post(
         f"{settings.API_V1_STR}/uploads",
@@ -121,7 +159,7 @@ def test_upload_private_image(client: TestClient, superuser_token_headers: dict[
 
 def test_upload_rejects_mime_type_that_does_not_match_extension(client: TestClient, superuser_token_headers: dict[str, str]) -> None:
     files = {"file": ("test.png", _png_content(), "image/jpeg")}
-    data = {"file_type": "image", "visibility": "public"}
+    data = {"file_type": "image", "visibility": "public", "purpose": "system_setting_logo"}
 
     response = client.post(
         f"{settings.API_V1_STR}/uploads",
@@ -136,7 +174,7 @@ def test_upload_rejects_mime_type_that_does_not_match_extension(client: TestClie
 def test_upload_rejects_configured_but_unsupported_extension(client: TestClient, superuser_token_headers: dict[str, str], monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(settings, "UPLOAD_ALLOWED_IMAGE_EXTENSIONS", "png,svg")
     files = {"file": ("test.svg", b"<svg></svg>", "image/svg+xml")}
-    data = {"file_type": "image", "visibility": "public"}
+    data = {"file_type": "image", "visibility": "public", "purpose": "system_setting_logo"}
 
     response = client.post(
         f"{settings.API_V1_STR}/uploads",
@@ -151,7 +189,7 @@ def test_upload_rejects_configured_but_unsupported_extension(client: TestClient,
 def test_upload_rejects_too_long_filename_before_saving(client: TestClient, superuser_token_headers: dict[str, str], tmp_path: Path) -> None:
     filename = f"{'a' * 252}.png"
     files = {"file": (filename, _png_content(), "image/png")}
-    data = {"file_type": "image", "visibility": "public"}
+    data = {"file_type": "image", "visibility": "public", "purpose": "system_setting_logo"}
 
     response = client.post(
         f"{settings.API_V1_STR}/uploads",
@@ -178,6 +216,34 @@ def test_upload_rejects_too_long_purpose_before_saving(client: TestClient, super
     assert _saved_files(tmp_path / "public") == []
 
 
+def test_upload_requires_purpose(client: TestClient, superuser_token_headers: dict[str, str], tmp_path: Path) -> None:
+    files = {"file": ("test.png", _png_content(), "image/png")}
+    data = {"file_type": "image", "visibility": "public"}
+
+    response = client.post(
+        f"{settings.API_V1_STR}/uploads",
+        headers=superuser_token_headers,
+        files=files,
+        data=data,
+    )
+    assert response.status_code == 422
+    assert _saved_files(tmp_path / "public") == []
+
+
+def test_upload_rejects_unknown_purpose(client: TestClient, superuser_token_headers: dict[str, str], tmp_path: Path) -> None:
+    files = {"file": ("test.png", _png_content(), "image/png")}
+    data = {"file_type": "image", "visibility": "public", "purpose": "unknown"}
+
+    response = client.post(
+        f"{settings.API_V1_STR}/uploads",
+        headers=superuser_token_headers,
+        files=files,
+        data=data,
+    )
+    assert response.status_code == 422
+    assert _saved_files(tmp_path / "public") == []
+
+
 def test_upload_public_url_uses_configured_prefix(
     client: TestClient,
     superuser_token_headers: dict[str, str],
@@ -185,7 +251,7 @@ def test_upload_public_url_uses_configured_prefix(
 ) -> None:
     monkeypatch.setattr(settings, "UPLOAD_PUBLIC_URL_PREFIX", "/assets/uploads")
     files = {"file": ("test.png", _png_content(), "image/png")}
-    data = {"file_type": "image", "visibility": "public"}
+    data = {"file_type": "image", "visibility": "public", "purpose": "system_setting_logo"}
 
     response = client.post(
         f"{settings.API_V1_STR}/uploads",
@@ -213,7 +279,7 @@ def test_deleting_uploader_keeps_upload_record_and_clears_created_by(
     session: Session,
     superuser_token_headers: dict[str, str],
 ) -> None:
-    permission = session.exec(select(Permission).where(Permission.resource == "upload", Permission.action == "create")).first()
+    permission = session.exec(select(Permission).where(Permission.resource == "system_setting", Permission.action == "upload_logo")).first()
     assert permission is not None
 
     uploader_role = Role(name=f"uploader_{uuid.uuid4().hex[:8]}", description="Uploader")
@@ -237,7 +303,7 @@ def test_deleting_uploader_keeps_upload_record_and_clears_created_by(
         f"{settings.API_V1_STR}/uploads",
         headers=uploader_headers,
         files=files,
-        data={"file_type": "image", "visibility": "public"},
+        data={"file_type": "image", "visibility": "public", "purpose": "system_setting_logo"},
     )
     upload_data = assert_success(upload_response, 201)
 

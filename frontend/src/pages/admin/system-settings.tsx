@@ -48,7 +48,21 @@ function emptyToNull(value: string | null) {
 
 export function SystemSettingsPage() {
   const { hasPermission } = useAuth()
-  const canUpdate = hasPermission('system_setting:update')
+  const canUpdateSystemName = hasPermission('system_setting:update_system_name')
+  const canUpdateTagline = hasPermission('system_setting:update_tagline')
+  const canUpdateCopyright = hasPermission('system_setting:update_copyright')
+  const canUpdatePageTitleTemplate = hasPermission('system_setting:update_page_title_template')
+  const canUploadLogo = hasPermission('system_setting:upload_logo')
+  const canUploadFavicon = hasPermission('system_setting:upload_favicon')
+  const canUploadLoginBackground = hasPermission('system_setting:upload_login_background')
+  const canSave =
+    canUpdateSystemName ||
+    canUpdateTagline ||
+    canUpdateCopyright ||
+    canUpdatePageTitleTemplate ||
+    canUploadLogo ||
+    canUploadFavicon ||
+    canUploadLoginBackground
   const { data: settings, isLoading } = useAdminSystemSettings()
   const { mutateAsync: updateSettings, isPending: isUpdating } = useUpdateSystemSettings()
 
@@ -102,16 +116,17 @@ export function SystemSettingsPage() {
 
   const onSubmit = async (values: FormValues) => {
     try {
-      const payload: SystemSettingUpdatePayload = {
-        system_name: values.system_name.trim(),
-        tagline: emptyToNull(values.tagline),
-        copyright: emptyToNull(values.copyright),
-        page_title_template: values.page_title_template.trim(),
-        logo_light_file_id: values.logo_light_file_id,
-        logo_dark_file_id: values.logo_dark_file_id,
-        favicon_file_id: values.favicon_file_id,
-        login_background_file_id: values.login_background_file_id,
+      const payload: SystemSettingUpdatePayload = {}
+      if (canUpdateSystemName) payload.system_name = values.system_name.trim()
+      if (canUpdateTagline) payload.tagline = emptyToNull(values.tagline)
+      if (canUpdateCopyright) payload.copyright = emptyToNull(values.copyright)
+      if (canUpdatePageTitleTemplate) payload.page_title_template = values.page_title_template.trim()
+      if (canUploadLogo) {
+        payload.logo_light_file_id = values.logo_light_file_id
+        payload.logo_dark_file_id = values.logo_dark_file_id
       }
+      if (canUploadFavicon) payload.favicon_file_id = values.favicon_file_id
+      if (canUploadLoginBackground) payload.login_background_file_id = values.login_background_file_id
 
       await updateSettings(payload)
       toast.success('系统设置已保存')
@@ -137,7 +152,7 @@ export function SystemSettingsPage() {
           <h1 className="text-2xl font-bold tracking-tight">系统设置</h1>
           <p className="text-sm text-muted-foreground">配置系统基础信息和资源资产。</p>
         </div>
-        {canUpdate && (
+        {canSave && (
           <Button onClick={form.handleSubmit(onSubmit)} disabled={isUpdating} className="shadow-sm">
             {isUpdating ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Save className="mr-2 size-4" />}
             保存所有更改
@@ -162,7 +177,7 @@ export function SystemSettingsPage() {
                     <FormItem>
                       <FormLabel>系统名称</FormLabel>
                       <FormControl>
-                        <Input placeholder="输入系统名称" {...field} value={field.value || ''} disabled={!canUpdate} className="bg-muted/30 focus-visible:bg-background" />
+                        <Input placeholder="输入系统名称" {...field} value={field.value || ''} disabled={!canUpdateSystemName} className="bg-muted/30 focus-visible:bg-background" />
                       </FormControl>
                       <FormDescription>用于页头、浏览器标签等位置。</FormDescription>
                       <FormMessage />
@@ -177,7 +192,7 @@ export function SystemSettingsPage() {
                     <FormItem>
                       <FormLabel>标题语 (Tagline)</FormLabel>
                       <FormControl>
-                        <Input placeholder="输入标语或简短描述" {...field} value={field.value || ''} disabled={!canUpdate} className="bg-muted/30 focus-visible:bg-background" />
+                        <Input placeholder="输入标语或简短描述" {...field} value={field.value || ''} disabled={!canUpdateTagline} className="bg-muted/30 focus-visible:bg-background" />
                       </FormControl>
                       <FormDescription>显示在登录页和品牌说明中。</FormDescription>
                       <FormMessage />
@@ -193,7 +208,7 @@ export function SystemSettingsPage() {
                       <FormItem>
                         <FormLabel>版权信息</FormLabel>
                         <FormControl>
-                          <Input placeholder="Copyright © 2026 Your Company" {...field} value={field.value || ''} disabled={!canUpdate} className="bg-muted/30 focus-visible:bg-background" />
+                          <Input placeholder="Copyright © 2026 Your Company" {...field} value={field.value || ''} disabled={!canUpdateCopyright} className="bg-muted/30 focus-visible:bg-background" />
                         </FormControl>
                         <FormDescription>页面底部的法律声明信息。</FormDescription>
                         <FormMessage />
@@ -217,7 +232,8 @@ export function SystemSettingsPage() {
               <ImageUploadField
                 label="浅色模式 Logo"
                 description="通常用于浅色顶栏或侧栏背景。"
-                disabled={!canUpdate}
+                purpose="system_setting_logo"
+                disabled={!canUploadLogo}
                 value={{
                   file_id: logoLightFileId,
                   url: logoLightUrl,
@@ -231,7 +247,8 @@ export function SystemSettingsPage() {
               <ImageUploadField
                 label="深色模式 Logo"
                 description="通常用于深色顶栏或侧栏背景。"
-                disabled={!canUpdate}
+                purpose="system_setting_logo"
+                disabled={!canUploadLogo}
                 value={{
                   file_id: logoDarkFileId,
                   url: logoDarkUrl,
@@ -245,7 +262,8 @@ export function SystemSettingsPage() {
               <ImageUploadField
                 label="Favicon"
                 description="浏览器页签显示的小图标 (建议 32x32)。"
-                disabled={!canUpdate}
+                purpose="system_setting_favicon"
+                disabled={!canUploadFavicon}
                 value={{
                   file_id: faviconFileId,
                   url: faviconUrl,
@@ -259,7 +277,8 @@ export function SystemSettingsPage() {
               <ImageUploadField
                 label="登录背景图"
                 description="登录页面的主视觉背景图片。"
-                disabled={!canUpdate}
+                purpose="system_setting_login_background"
+                disabled={!canUploadLoginBackground}
                 value={{
                   file_id: loginBackgroundFileId,
                   url: loginBackgroundUrl,
@@ -289,7 +308,7 @@ export function SystemSettingsPage() {
                     <FormItem>
                       <FormLabel>浏览器标题模板</FormLabel>
                       <FormControl>
-                        <Input placeholder="{page} - {systemName}" {...field} disabled={!canUpdate} className="max-w-md bg-muted/30 focus-visible:bg-background" />
+                        <Input placeholder="{page} - {systemName}" {...field} disabled={!canUpdatePageTitleTemplate} className="max-w-md bg-muted/30 focus-visible:bg-background" />
                       </FormControl>
                       <FormDescription>
                         动态构建页面标题。可用变量：<code>{'{page}'}</code> (当前页面名) 和 <code>{'{systemName}'}</code> (系统名称)。

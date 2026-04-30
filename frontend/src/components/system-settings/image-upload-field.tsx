@@ -7,12 +7,14 @@ import { toast } from 'sonner'
 interface ImageUploadFieldProps {
   label: string
   description?: string
+  purpose: string
   value: { file_id: string | null; url: string | null }
   onChange: (value: { file_id: string | null; url: string | null }) => void
   disabled?: boolean
+  uploadDisabled?: boolean
 }
 
-export function ImageUploadField({ label, description, value, onChange, disabled }: ImageUploadFieldProps) {
+export function ImageUploadField({ label, description, purpose, value, onChange, disabled, uploadDisabled }: ImageUploadFieldProps) {
   const { mutateAsync: uploadFile, isPending } = useUploadFile()
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -24,6 +26,7 @@ export function ImageUploadField({ label, description, value, onChange, disabled
     formData.append('file', file)
     formData.append('file_type', 'image')
     formData.append('visibility', 'public')
+    formData.append('purpose', purpose)
 
     try {
       const result = await uploadFile(formData)
@@ -75,7 +78,7 @@ export function ImageUploadField({ label, description, value, onChange, disabled
             className="hidden"
             ref={inputRef}
             onChange={handleFileChange}
-            disabled={disabled || isPending}
+            disabled={disabled || uploadDisabled || isPending}
           />
           <div className="flex flex-wrap items-center gap-2">
             <Button
@@ -83,7 +86,7 @@ export function ImageUploadField({ label, description, value, onChange, disabled
               variant="secondary"
               size="sm"
               className="h-8"
-              disabled={disabled || isPending}
+              disabled={disabled || uploadDisabled || isPending}
               onClick={() => inputRef.current?.click()}
             >
               {isPending ? <Loader2 className="mr-1.5 size-3.5 animate-spin" /> : <Upload className="mr-1.5 size-3.5" />}

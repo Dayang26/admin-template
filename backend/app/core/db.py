@@ -1,7 +1,7 @@
 import logging
 from uuid import UUID
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, tuple_
 from sqlmodel import Session, select
 
 from app.core.config import settings
@@ -27,9 +27,14 @@ BUILTIN_PERMISSIONS: list[dict[str, str]] = [
     {"resource": "role", "action": "delete"},
     {"resource": "audit_log", "action": "read"},
     {"resource": "dashboard", "action": "read"},
-    {"resource": "upload", "action": "create"},
     {"resource": "system_setting", "action": "read"},
-    {"resource": "system_setting", "action": "update"},
+    {"resource": "system_setting", "action": "update_system_name"},
+    {"resource": "system_setting", "action": "update_tagline"},
+    {"resource": "system_setting", "action": "update_copyright"},
+    {"resource": "system_setting", "action": "update_page_title_template"},
+    {"resource": "system_setting", "action": "upload_logo"},
+    {"resource": "system_setting", "action": "upload_favicon"},
+    {"resource": "system_setting", "action": "upload_login_background"},
 ]
 
 ROLE_PERMISSION_MAP: dict[str, list[tuple[str, str]]] = {
@@ -44,10 +49,23 @@ ROLE_PERMISSION_MAP: dict[str, list[tuple[str, str]]] = {
         ("role", "delete"),
         ("audit_log", "read"),
         ("dashboard", "read"),
-        ("upload", "create"),
         ("system_setting", "read"),
-        ("system_setting", "update"),
+        ("system_setting", "update_system_name"),
+        ("system_setting", "update_tagline"),
+        ("system_setting", "update_copyright"),
+        ("system_setting", "update_page_title_template"),
+        ("system_setting", "upload_logo"),
+        ("system_setting", "upload_favicon"),
+        ("system_setting", "upload_login_background"),
     ],
+}
+
+OBSOLETE_PERMISSIONS: set[tuple[str, str]] = {
+    ("upload", "create"),
+    ("system_setting", "update"),
+    ("system_setting_logo", "upload"),
+    ("system_setting_favicon", "upload"),
+    ("system_setting_login_background", "upload"),
 }
 
 
@@ -62,6 +80,20 @@ def _ensure_roles(session: Session) -> dict[str, Role]:
 
 
 def _ensure_permissions(session: Session) -> dict[tuple[str, str], Permission]:
+    obsolete_permissions = session.exec(
+        select(Permission).where(
+            tuple_(Permission.resource, Permission.action).in_(OBSOLETE_PERMISSIONS),
+        )
+    ).all()
+    if obsolete_permissions:
+        obsolete_permission_ids = [permission.id for permission in obsolete_permissions]
+        obsolete_bindings = session.exec(select(RolePermission).where(RolePermission.permission_id.in_(obsolete_permission_ids))).all()
+        for binding in obsolete_bindings:
+            session.delete(binding)
+        for permission in obsolete_permissions:
+            session.delete(permission)
+        session.commit()
+
     existing_permissions: dict[tuple[str, str], Permission] = {(permission.resource, permission.action): permission for permission in session.exec(select(Permission)).all()}
     for perm_def in BUILTIN_PERMISSIONS:
         key = (perm_def["resource"], perm_def["action"])
