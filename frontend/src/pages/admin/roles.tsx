@@ -132,7 +132,7 @@ export function RolesPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="角色管理"
+        title="权限管理"
         description="管理系统角色和权限分配"
         actions={
           <Button onClick={() => setCreateOpen(true)}>

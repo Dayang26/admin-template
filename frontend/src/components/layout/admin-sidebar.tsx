@@ -39,16 +39,16 @@ const navItems: NavItem[] = [
     permissions: ['user:read'],
   },
   {
+    title: '权限管理',
+    url: '/admin/roles',
+    icon: ShieldCheck,
+    permissions: ['role:read'],
+  },
+  {
     title: '日志审计',
     url: '/admin/audit-logs',
     icon: ClipboardList,
     permissions: ['audit_log:read'],
-  },
-  {
-    title: '角色管理',
-    url: '/admin/roles',
-    icon: ShieldCheck,
-    permissions: ['role:read'],
   },
   {
     title: '系统设置',

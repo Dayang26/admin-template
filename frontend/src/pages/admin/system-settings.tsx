@@ -2,11 +2,10 @@ import { useEffect } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Loader2, Save } from 'lucide-react'
+import { Loader2, Save, Settings2, Palette, Globe } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { ImageUploadField } from '@/components/system-settings/image-upload-field'
-import { PageHeader } from '@/components/shared/page-header'
 import { Button } from '@/components/ui/button'
 import {
   Form,
@@ -18,7 +17,8 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Card, CardContent } from '@/components/ui/card'
+import { Separator } from '@/components/ui/separator'
 import { useAuth } from '@/lib/auth/context'
 import { useAdminSystemSettings, useUpdateSystemSettings } from '@/lib/hooks/use-system-settings'
 import type { SystemSettingUpdatePayload } from '@/lib/types/system-setting'
@@ -123,34 +123,38 @@ export function SystemSettingsPage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <Loader2 className="size-8 animate-spin text-muted-foreground" />
+      <div className="flex h-[400px] items-center justify-center">
+        <Loader2 className="size-8 animate-spin text-primary/60" />
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
-        <PageHeader title="系统设置" description="配置系统基础信息和品牌资源。" />
+    <div className="mx-auto max-w-5xl space-y-10 pb-20">
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-20 -mx-4 flex items-center justify-between border-b bg-background/95 px-4 py-4 backdrop-blur sm:mx-0 sm:px-0">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">系统设置</h1>
+          <p className="text-sm text-muted-foreground">配置系统基础信息和资源资产。</p>
+        </div>
         {canUpdate && (
-          <Button onClick={form.handleSubmit(onSubmit)} disabled={isUpdating}>
+          <Button onClick={form.handleSubmit(onSubmit)} disabled={isUpdating} className="shadow-sm">
             {isUpdating ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Save className="mr-2 size-4" />}
-            保存设置
+            保存所有更改
           </Button>
         )}
       </div>
 
       <Form {...form}>
-        <form className="space-y-8">
-          <Tabs defaultValue="basic" className="w-full max-w-4xl">
-            <TabsList className="mb-6">
-              <TabsTrigger value="basic">基础信息</TabsTrigger>
-              <TabsTrigger value="brand">品牌资源</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="basic" className="space-y-6">
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <form className="space-y-10">
+          {/* 基础设置 */}
+          <section className="space-y-6">
+            <div className="flex items-center gap-2 px-1">
+              <Settings2 className="size-5 text-primary" />
+              <h2 className="text-lg font-semibold">基础设置</h2>
+            </div>
+            <Card className="shadow-sm">
+              <CardContent className="grid gap-8 p-6 md:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="system_name"
@@ -158,9 +162,9 @@ export function SystemSettingsPage() {
                     <FormItem>
                       <FormLabel>系统名称</FormLabel>
                       <FormControl>
-                        <Input placeholder="输入系统名称" {...field} value={field.value || ''} disabled={!canUpdate} />
+                        <Input placeholder="输入系统名称" {...field} value={field.value || ''} disabled={!canUpdate} className="bg-muted/30 focus-visible:bg-background" />
                       </FormControl>
-                      <FormDescription>显示在登录页、侧边栏和浏览器标题中。</FormDescription>
+                      <FormDescription>用于页头、浏览器标签等位置。</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -171,110 +175,132 @@ export function SystemSettingsPage() {
                   name="tagline"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>标题语</FormLabel>
+                      <FormLabel>标题语 (Tagline)</FormLabel>
                       <FormControl>
-                        <Input placeholder="输入标题语" {...field} value={field.value || ''} disabled={!canUpdate} />
+                        <Input placeholder="输入标语或简短描述" {...field} value={field.value || ''} disabled={!canUpdate} className="bg-muted/30 focus-visible:bg-background" />
                       </FormControl>
-                      <FormDescription>显示在登录页和侧边栏品牌信息中。</FormDescription>
+                      <FormDescription>显示在登录页和品牌说明中。</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
 
-                <FormField
-                  control={form.control}
-                  name="copyright"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Copyright</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Copyright © 2026" {...field} value={field.value || ''} disabled={!canUpdate} />
-                      </FormControl>
-                      <FormDescription>用于登录页或页面底部展示版权信息。</FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <div className="md:col-span-2">
+                  <FormField
+                    control={form.control}
+                    name="copyright"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>版权信息</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Copyright © 2026 Your Company" {...field} value={field.value || ''} disabled={!canUpdate} className="bg-muted/30 focus-visible:bg-background" />
+                        </FormControl>
+                        <FormDescription>页面底部的法律声明信息。</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </section>
 
+          <Separator />
+
+          {/* 资源设置 */}
+          <section className="space-y-6">
+            <div className="flex items-center gap-2 px-1">
+              <Palette className="size-5 text-primary" />
+              <h2 className="text-lg font-semibold">资源设置</h2>
+            </div>
+            <div className="grid gap-6 md:grid-cols-2">
+              <ImageUploadField
+                label="浅色模式 Logo"
+                description="通常用于浅色顶栏或侧栏背景。"
+                disabled={!canUpdate}
+                value={{
+                  file_id: logoLightFileId,
+                  url: logoLightUrl,
+                }}
+                onChange={({ file_id, url }) => {
+                  form.setValue('logo_light_file_id', file_id, { shouldDirty: true })
+                  form.setValue('logo_light_url', url)
+                }}
+              />
+
+              <ImageUploadField
+                label="深色模式 Logo"
+                description="通常用于深色顶栏或侧栏背景。"
+                disabled={!canUpdate}
+                value={{
+                  file_id: logoDarkFileId,
+                  url: logoDarkUrl,
+                }}
+                onChange={({ file_id, url }) => {
+                  form.setValue('logo_dark_file_id', file_id, { shouldDirty: true })
+                  form.setValue('logo_dark_url', url)
+                }}
+              />
+
+              <ImageUploadField
+                label="Favicon"
+                description="浏览器页签显示的小图标 (建议 32x32)。"
+                disabled={!canUpdate}
+                value={{
+                  file_id: faviconFileId,
+                  url: faviconUrl,
+                }}
+                onChange={({ file_id, url }) => {
+                  form.setValue('favicon_file_id', file_id, { shouldDirty: true })
+                  form.setValue('favicon_url', url)
+                }}
+              />
+
+              <ImageUploadField
+                label="登录背景图"
+                description="登录页面的主视觉背景图片。"
+                disabled={!canUpdate}
+                value={{
+                  file_id: loginBackgroundFileId,
+                  url: loginBackgroundUrl,
+                }}
+                onChange={({ file_id, url }) => {
+                  form.setValue('login_background_file_id', file_id, { shouldDirty: true })
+                  form.setValue('login_background_url', url)
+                }}
+              />
+            </div>
+          </section>
+
+          <Separator />
+
+          {/* SEO 设置 */}
+          <section className="space-y-6">
+            <div className="flex items-center gap-2 px-1">
+              <Globe className="size-5 text-primary" />
+              <h2 className="text-lg font-semibold">SEO 与显示设置</h2>
+            </div>
+            <Card className="shadow-sm">
+              <CardContent className="p-6">
                 <FormField
                   control={form.control}
                   name="page_title_template"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>页面标题格式</FormLabel>
+                      <FormLabel>浏览器标题模板</FormLabel>
                       <FormControl>
-                        <Input placeholder="{page} - {systemName}" {...field} disabled={!canUpdate} />
+                        <Input placeholder="{page} - {systemName}" {...field} disabled={!canUpdate} className="max-w-md bg-muted/30 focus-visible:bg-background" />
                       </FormControl>
                       <FormDescription>
-                        可使用变量 <code>{'{page}'}</code> 和 <code>{'{systemName}'}</code>。
+                        动态构建页面标题。可用变量：<code>{'{page}'}</code> (当前页面名) 和 <code>{'{systemName}'}</code> (系统名称)。
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-              </div>
-            </TabsContent>
-
-            <TabsContent value="brand" className="space-y-8">
-              <div className="grid grid-cols-1 gap-x-8 gap-y-12 md:grid-cols-2">
-                <ImageUploadField
-                  label="浅色 Logo"
-                  description="在浅色背景上显示。"
-                  disabled={!canUpdate}
-                  value={{
-                    file_id: logoLightFileId,
-                    url: logoLightUrl,
-                  }}
-                  onChange={({ file_id, url }) => {
-                    form.setValue('logo_light_file_id', file_id, { shouldDirty: true })
-                    form.setValue('logo_light_url', url)
-                  }}
-                />
-
-                <ImageUploadField
-                  label="深色 Logo"
-                  description="在深色背景上显示。"
-                  disabled={!canUpdate}
-                  value={{
-                    file_id: logoDarkFileId,
-                    url: logoDarkUrl,
-                  }}
-                  onChange={({ file_id, url }) => {
-                    form.setValue('logo_dark_file_id', file_id, { shouldDirty: true })
-                    form.setValue('logo_dark_url', url)
-                  }}
-                />
-
-                <ImageUploadField
-                  label="Favicon"
-                  description="浏览器书签和标签页小图标。"
-                  disabled={!canUpdate}
-                  value={{
-                    file_id: faviconFileId,
-                    url: faviconUrl,
-                  }}
-                  onChange={({ file_id, url }) => {
-                    form.setValue('favicon_file_id', file_id, { shouldDirty: true })
-                    form.setValue('favicon_url', url)
-                  }}
-                />
-
-                <ImageUploadField
-                  label="登录页背景图"
-                  description="登录页面背景图片。"
-                  disabled={!canUpdate}
-                  value={{
-                    file_id: loginBackgroundFileId,
-                    url: loginBackgroundUrl,
-                  }}
-                  onChange={({ file_id, url }) => {
-                    form.setValue('login_background_file_id', file_id, { shouldDirty: true })
-                    form.setValue('login_background_url', url)
-                  }}
-                />
-              </div>
-            </TabsContent>
-          </Tabs>
+              </CardContent>
+            </Card>
+          </section>
         </form>
       </Form>
     </div>

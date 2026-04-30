@@ -1,7 +1,7 @@
 # 后端项目架构分析报告
 
-> 项目名称：nos-agent-carrier  
-> 分析日期：2026-04-24  
+> 项目名称：nos-agent-carrier (Admin Boilerplate)
+> 分析日期：2026-04-29
 > Python 版本：>=3.12
 
 ---
@@ -30,17 +30,18 @@
 
 ## 1. 项目概览
 
-本项目是一个基于 **FastAPI** 的 RESTful 后端服务，面向教育场景，核心功能包括：
+本项目是一个基于 **FastAPI** 的高标准 RESTful 后端服务模板 (Admin Boilerplate)，旨在为任何现代 SaaS 或中后台管理系统提供开箱即用的底座。核心功能包括：
 
 - 用户身份认证（JWT OAuth2）
-- 基于角色的访问控制与动态角色管理（RBAC）
-- 班级维度的细粒度权限管理与完整的班级 CRUD
+- 细粒度的、基于资源与操作的访问控制（RBAC）
+- 完整的用户与角色权限管理体系
 - 系统操作审计日志（Audit Logs）
-- 超级管理员用户管理与 Dashboard 统计
-- 分页查询支持
+- 数据大盘统计（Dashboard）
+- 全局系统配置动态管理（System Settings）
+- 分页查询与多维检索支持
 - 统一 API 响应结构（中间件自动包装）
 
-项目采用清晰的分层架构，将路由、业务逻辑、数据访问、模型定义各自分离，具备良好的可扩展性。
+项目采用清晰的分层架构，将路由、业务逻辑、数据访问、模型定义各自分离，具备良好的可维护性与扩展性。
 
 ---
 
@@ -65,41 +66,35 @@
 
 ## 3. 目录结构
 
-```
+```text
 backend/
 ├── app/
 │   ├── main.py                   # FastAPI 应用入口
-│   ├── agents/                   # AI Agent 代理模块（预留）
 │   ├── alembic/                  # 数据库迁移
-│   │   ├── env.py
-│   │   └── versions/             # 迁移脚本
 │   ├── api/
 │   │   ├── main.py               # 路由聚合
 │   │   └── routers/
 │   │       ├── login.py          # 登录接口
-│   │       ├── users.py          # 普通用户接口
-│   │       ├── teacher.py        # 教师专属接口
+│   │       ├── users.py          # 当前用户自服务接口
+│   │       ├── system_settings.py# 公开系统配置接口
 │   │       └── admin/
-│   │           ├── users.py      # 管理员用户接口
-│   │           ├── classes.py    # 班级管理接口
-│   │           ├── roles.py      # 角色管理接口
+│   │           ├── users.py      # 用户管理接口
+│   │           ├── roles.py      # 角色权限管理接口
 │   │           ├── audit_logs.py # 审计日志接口
+│   │           ├── system_settings.py # 系统全局设置管理接口
 │   │           └── dashboard.py  # 仪表盘统计接口
 │   ├── core/
 │   │   ├── config.py             # 全局配置（pydantic-settings）
 │   │   ├── db.py                 # 数据库引擎 & 初始化
 │   │   └── security.py           # JWT & 密码工具
-│   ├── deps/
-│   │   ├── __init__.py           # 统一导出
-│   │   ├── audit.py              # 审计依赖提取请求上下文
+│   ├── deps/                     # 依赖注入集合
+│   │   ├── audit.py              # 审计日志依赖
 │   │   ├── auth.py               # 认证依赖
 │   │   ├── db.py                 # 数据库会话依赖
-│   │   └── permission.py         # 权限检查依赖
+│   │   └── permission.py         # RBAC 权限检查依赖
 │   ├── middleware/
-│   │   ├── __init__.py
 │   │   └── response.py           # 统一响应包装中间件
 │   ├── models/
-│   │   ├── Token.py              # JWT Payload 模型
 │   │   └── db/
 │   │       ├── audit_log.py      # 审计日志表
 │   │       ├── base.py           # 公共 Mixin（UUID PK、时间戳）
@@ -108,282 +103,102 @@ backend/
 │   │       ├── permission.py     # 权限表
 │   │       ├── userRole.py       # 用户-角色关联表
 │   │       ├── rolePermission.py # 角色-权限关联表
-│   │       └── userClass.py      # 班级表
+│   │       └── system_setting.py # 系统全局设置表
 │   ├── schemas/
-│   │   ├── class_member.py       # 班级成员 Schema
 │   │   ├── response.py           # 统一响应泛型模型 ApiResp[T]
 │   │   ├── token.py              # Token 响应 Schema
-│   │   ├── user_class.py         # 班级相关的 Schema
-│   │   └── user.py               # 用户 Schema
+│   │   ├── user.py               # 用户 Schema
+│   │   ├── role.py               # 角色 Schema
+│   │   └── system_setting.py     # 系统设置 Schema
 │   └── services/
-│       ├── class_service.py      # 班级业务逻辑
 │       ├── login_service.py      # 登录业务逻辑
-│       └── user_service.py       # 用户业务逻辑
-├── tests/
-│   ├── conftest.py               # 全局测试 fixtures
-│   ├── api/
-│   │   ├── login/                # 登录接口测试
-│   │   └── admin/                # 管理员接口测试
-│   ├── core/                     # 核心模块测试
-│   └── services/
-│       └── test_login_service.py # 服务层单元测试
-├── docs/                         # 项目文档
-├── pyproject.toml                # 项目依赖与工具配置
-└── alembic.ini                   # Alembic 配置文件
+│       ├── user_service.py       # 用户管理业务逻辑
+│       └── system_setting_service.py # 系统设置业务逻辑
+├── tests/                        # 单元/集成测试
+├── pyproject.toml                # 依赖管理 (uv)
+└── alembic.ini                   # 迁移配置
 ```
 
 ---
 
 ## 4. 分层架构
 
-```
-┌─────────────────────────────────────────┐
-│              HTTP 请求                   │
-└──────────────────┬──────────────────────┘
-                   │
-┌──────────────────▼──────────────────────┐
-│     CORSMiddleware（跨域处理）            │
-└──────────────────┬──────────────────────┘
-                   │
-┌──────────────────▼──────────────────────┐
-│  UnifiedResponseMiddleware（统一响应包装） │
-│  + 异常处理器（HTTPException / 422 / 500）│
-└──────────────────┬──────────────────────┘
-                   │
-┌──────────────────▼──────────────────────┐
-│           API 路由层 (routers)            │
-│  login.py / users.py / admin/users.py   │
-└──────────────────┬──────────────────────┘
-                   │ 调用
-┌──────────────────▼──────────────────────┐
-│           服务层 (services)               │
-│   login_service.py / user_service.py    │
-└──────────────────┬──────────────────────┘
-                   │ 调用
-┌──────────────────▼──────────────────────┐
-│         数据模型层 (models/db)             │
-│  User / Role / Permission / UserRole …  │
-└──────────────────┬──────────────────────┘
-                   │ ORM
-┌──────────────────▼──────────────────────┐
-│          PostgreSQL 数据库                │
-└─────────────────────────────────────────┘
-```
+采用标准 Web 三层架构 + 强依赖注入：
 
-横切关注点（通过 FastAPI 依赖注入 + 中间件）：
-
-- `middleware/response.py` → 统一响应包装
-- `deps/auth.py` → 身份认证
-- `deps/db.py` → 数据库会话
-- `deps/permission.py` → 权限检查
-
-每一层职责清晰：
-
-- **中间件层**：统一响应包装、异常处理、CORS 等横切逻辑
-- **路由层**：处理 HTTP 请求/响应，参数校验，调用服务层
-- **服务层**：封装业务逻辑，不直接暴露给 HTTP 层
-- **模型层**：SQLModel 表定义，同时作为 ORM 实体和 Pydantic 模型
-- **依赖层**：通过 FastAPI DI 系统注入认证、会话、权限等横切逻辑
+- **中间件层**：处理统一响应包装 (`UnifiedResponseMiddleware`)、CORS 以及全局异常拦截。
+- **路由层 (routers)**：处理 HTTP 规范，接收请求并返回模型，纯调度，无复杂业务。
+- **服务层 (services)**：封装所有业务逻辑，供路由层调用。
+- **数据层 (models/db)**：由 SQLModel 定义关系与结构。
+- **横切依赖 (deps)**：将 Auth 解析、DB 会话获取、RBAC 校验等抽离为 FastAPI 依赖项注入到路由中。
 
 ---
 
 ## 5. 数据库模型
 
-### 5.1 公共 Mixin（base.py）
+所有表继承自基类及公共 Mixin，包含默认 UUID 主键及 `created_at`/`updated_at` 时间戳。
 
-所有表通过 Mixin 复用公共字段：
+### 核心表结构
 
-| Mixin | 字段 | 说明 |
-|-------|------|------|
-| `UUIDPrimaryKeyMixin` | `id: UUID` | 自动生成 UUID 主键，带索引 |
-| `TimestampMixin` | `created_at`, `updated_at` | 带时区的创建/更新时间，`updated_at` 由数据库 `onupdate` 自动维护 |
-
-### 5.2 数据表一览
-
-| 表名 | 模型类 | 说明 |
+| 表名 | 模型类 | 职责 |
 |------|--------|------|
 | `t_user` | `User` | 用户，含邮箱、密码哈希、激活状态 |
-| `t_role` | `Role` | 角色，如 superuser / teacher / student |
-| `t_permission` | `Permission` | 权限，由 resource + action 唯一确定 |
-| `t_class` | `Class` | 班级，用于班级维度的角色绑定 |
-| `t_user_role` | `UserRole` | 用户-角色关联，支持全局或班级级别 |
-| `t_role_permission` | `RolePermission` | 角色-权限关联 |
-| `t_audit_log` | `AuditLog` | 审计日志，记录系统关键操作历史 |
+| `t_role` | `Role` | 角色（如 superuser / admin 等） |
+| `t_permission` | `Permission` | 最小权限单元，由 resource + action 唯一确定 |
+| `t_user_role` | `UserRole` | 用户与角色关联（多对多中间表） |
+| `t_role_permission` | `RolePermission` | 角色与权限关联（多对多中间表） |
+| `t_audit_log` | `AuditLog` | 审计日志，记录关键操作轨迹、IP、UserAgent 等 |
+| `t_system_setting` | `SystemSetting` | 系统全局参数表（极简 Key-Value 或宽表模式存储配置） |
 
-### 5.3 实体关系图
-
-```
-t_user ──────────── t_user_role ──────────── t_role
-  │                      │
-  │                      │
-t_class              t_role_permission
-  │
-t_permission
-```
-
-### 5.4 关键设计
-
-**User（t_user）**
+### 关系简图
 
 ```
-id            UUID PK
-email         唯一索引，最长 255
-is_active     布尔，默认 True
-full_name     可选，最长 255
-hashed_password 哈希后的密码
-created_at / updated_at  时间戳
+t_user ──(1:N)── t_user_role ──(N:1)── t_role ──(1:N)── t_role_permission ──(N:1)── t_permission
 ```
-
-**UserRole（t_user_role）**
-
-```
-id        UUID PK
-user_id   FK → t_user.id
-role_id   FK → t_role.id
-class_id  FK → t_class.id（可为 NULL）
-唯一约束：(user_id, role_id, class_id)
-```
-
-`class_id IS NULL` 表示全局角色；非 NULL 表示该角色仅在指定班级内生效。
-
-**Permission（t_permission）**
-
-```
-id        UUID PK
-resource  资源名，如 class / user
-action    操作名，如 create / read / update / delete
-唯一约束：(resource, action)
-```
-
-### 5.5 审计日志系统 (Audit Logging)
-
-**设计目标**
-追踪和记录系统中关键操作的历史，以便于安全审计和问题排查。
-
-**核心模型 (AuditLog)**
-记录请求的关键上下文信息：
-- `user_id` / `user_email`：操作者信息
-- `method` / `path` / `action`：请求方法、路径、操作中文描述
-- `status_code` / `ip_address` / `user_agent`：网络与状态信息
-
-**审计依赖 (deps/audit.py)**
-- **`AuditInfo` 依赖**：从 FastAPI `Request` 对象中自动提取 IP、User-Agent 等上下文。
-- **`log_audit` 方法**：业务逻辑执行成功后调用此方法，将日志信息持久化到数据库中。
 
 ---
 
 ## 6. RBAC 权限系统
 
-### 6.1 设计模型
+系统采用了纯粹且强大的基于角色的访问控制模型（Role-Based Access Control），彻底告别硬编码的“仅管理员可见”机制。
 
-项目实现了一套 **RBAC（基于角色的访问控制）** 系统，并在此基础上扩展了**班级维度**的权限隔离：
+### 6.1 权限点设计
+权限 (Permission) 是最小管控单元，由两部分组合：
+- `resource`: 目标资源（如 `"user"`, `"role"`, `"system_setting"`）
+- `action`: 行为动作（如 `"create"`, `"read"`, `"update"`, `"delete"`）
 
-```
-用户 (User)
-└── 拥有多个 UserRole（全局 或 班级级别）
-    └── 每个 UserRole 关联一个 Role
-        └── Role 拥有多个 Permission（resource + action）
-```
+### 6.2 校验机制
+依赖注入 `require_permission(resource, action)` 被挂载到每个路由上：
+1. **超级特权**：判断当前用户是否含有系统内置的 `superuser` 角色，若有则直接放行。
+2. **常规校验**：查询当前用户所挂载的所有角色，校验是否至少有一个角色包含了目标权限。如果全无，则抛出 `HTTP 403 Forbidden`。
 
-### 6.2 两类角色
-
-| 类型 | class_id | 说明 |
-|------|----------|------|
-| 全局角色 | NULL | 对所有资源生效，如 superuser |
-| 班级角色 | 指定班级 UUID | 仅在该班级范围内生效，如 teacher in class A |
-
-### 6.3 权限检查流程（require_permission）
-
-```python
-# deps/permission.py
-def require_permission(resource: str, action: str):
-    def checker(session, current_user):
-        # 1. 检查是否拥有 superuser 全局角色 → 直接放行
-        # 2. 查询用户角色链上是否存在匹配的 Permission
-        #    (resource == resource AND action == action)
-        # 3. 无匹配 → 403 Insufficient permissions
-```
-
-### 6.4 权限全局管控策略
-
-系统已全面废除在业务路由中硬编码 `get_current_active_superuser` 的做法，所有的管理员及教师接口均已改造为基于 `require_permission` 的细粒度控制。这使得企业级 RBAC 真正生效：通过分配如 `"user"`, `"class"`, `"role"`, `"audit_log"`, `"dashboard"` 的对应权限，非超级用户也能管理系统的指定模块。超级管理员（`superuser`）角色在底层的 `require_permission` 校验中具有内置的全局放行特权。
+这种设计使得非超级管理员也能被灵活授予“仅查看审计日志”或“可管理部分用户”的特权。
 
 ---
 
 ## 7. API 路由
 
-### 7.1 路由前缀
+路由按照业务域拆分，均在 `/api/v1` 前缀下：
 
-所有接口统一挂载在 `/api/v1` 前缀下（由 `settings.API_V1_STR` 控制）。
+### 认证与自服务
+- `POST /login/access-token`: JWT 登录。
+- `GET /users/me`: 获取个人信息。
+- `PATCH /users/me` / `PATCH /users/me/password`: 更新资料或修改密码。
 
-### 7.2 接口列表
+### 管理端体系 (Admin) - 均受 RBAC 保护
+- `GET /admin/dashboard/stats`: 大盘指标统计。
+- `GET/POST/PATCH/DELETE /admin/users`: 用户的全生命周期 CRUD，包含搜索与过滤。
+- `GET /admin/roles`: 角色与权限查询。
+- `GET /admin/audit-logs`: 审计追踪。
+- `GET/PATCH /admin/system-settings`: 获取或更新后台系统配置。
 
-| 方法 | 路径 | 权限 | 说明 |
-|------|------|------|------|
-| POST | `/api/v1/login/access-token` | 无 | 用户登录，返回 JWT |
-| GET | `/api/v1/users/me` | 当前登录用户 | 获取个人详情（含角色班级） |
-| PATCH | `/api/v1/users/me` | 当前登录用户 | 更新个人资料（全名） |
-| PATCH | `/api/v1/users/me/password` | 当前登录用户 | 修改个人密码 |
-| POST | `/api/v1/users/` | require_permission("user","create") | 创建用户（普通权限） |
-| GET | `/api/v1/admin/users/` | require_permission("user", "read") | 获取用户列表（支持搜索筛选） |
-| POST | `/api/v1/admin/users/` | require_permission("user", "create") | 管理员创建用户并分配角色 |
-| GET | `/api/v1/admin/users/{user_id}` | require_permission("user", "read") | 获取用户详情（含角色与班级归属） |
-| PATCH | `/api/v1/admin/users/{user_id}` | require_permission("user", "update") | 管理员更新用户信息 |
-| DELETE | `/api/v1/admin/users/{user_id}` | require_permission("user", "delete") | 管理员删除用户账号 |
-| GET | `/api/v1/admin/classes/` | require_permission("class", "read") | 分页获取所有班级列表 |
-| POST | `/api/v1/admin/classes/` | require_permission("class", "create") | 创建新班级 |
-| PATCH | `/api/v1/admin/classes/{class_id}` | require_permission("class", "update") | 更新班级信息 |
-| DELETE | `/api/v1/admin/classes/{class_id}` | require_permission("class", "delete") | 删除班级 |
-| GET | `/api/v1/admin/classes/{class_id}/members` | require_permission("class", "read") | 获取班级成员列表 |
-| POST | `/api/v1/admin/classes/{class_id}/members` | require_permission("class", "update") | 添加成员到班级（分配角色） |
-| DELETE | `/api/v1/admin/classes/{class_id}/members/{user_id}` | require_permission("class", "update") | 从班级中移除成员 |
-| GET | `/api/v1/admin/roles/` | require_permission("role", "read") | 分页获取角色列表 |
-| GET | `/api/v1/admin/audit-logs/` | require_permission("audit_log", "read") | 分页查询审计日志 |
-| GET | `/api/v1/teacher/classes` | require_permission("class", "read") | 获取当前用户参与的班级列表 |
-| GET | `/api/v1/teacher/classes/{class_id}/members` | require_permission("class", "read") | 获取所在班级的成员列表 |
-| GET | `/api/v1/admin/dashboard/stats` | require_permission("dashboard", "read") | 获取系统概览统计数据 |
-
-### 7.3 路由聚合（api/main.py）
-
-```python
-api_router = APIRouter()
-api_router.include_router(users.router)
-api_router.include_router(login.router)
-api_router.include_router(teacher.router)
-api_router.include_router(admin_users.router)
-api_router.include_router(admin_classes.router)
-api_router.include_router(admin_roles.router)
-api_router.include_router(admin_audit_logs.router)
-api_router.include_router(admin_dashboard.router)
-```
-
-### 7.4 分页响应格式
-
-管理员用户列表接口使用 `fastapi-pagination`，分页数据包装在统一响应的 `data` 字段内：
-
-```json
-{
-  "code": 200,
-  "message": "success",
-  "data": {
-    "items": [...],
-    "total": 100,
-    "page": 1,
-    "size": 20,
-    "pages": 5
-  }
-}
-```
+### 开放数据
+- `GET /system-settings/public`: 对未登录游客开放的基础信息（系统名称、Logo、备案号等）。
 
 ---
 
 ## 8. 统一响应结构
 
-### 8.1 设计目标
-
-所有 API 接口（成功 & 失败）返回统一的 JSON 结构，方便前端统一处理。
-
-### 8.2 响应格式
+为简化前端数据解析，使用**中间件级**统一数据包装：
 
 ```json
 {
@@ -393,376 +208,38 @@ api_router.include_router(admin_dashboard.router)
 }
 ```
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `code` | `int` | 与 HTTP 状态码一致 |
-| `message` | `str` | 成功时为 `"success"`，失败时为错误描述 |
-| `data` | `T \| null` | 成功时为业务数据，失败时为 `null` |
-
-### 8.3 实现机制
-
-采用**两层机制**，路由函数代码**零改动**：
-
-| 层级 | 组件 | 职责 |
-|------|------|------|
-| 层 1 | `UnifiedResponseMiddleware` | 拦截 2xx JSON 响应，包装为 `{code, message, data}` |
-| 层 2 | 异常处理器 | 覆盖 `HTTPException`、`RequestValidationError`、`Exception`，统一返回错误格式 |
-
-**关键设计：**
-
-- **自动化**：中间件自动包装，路由函数无需手动构造外层结构
-- **防双重包装**：检测 body 是否已含 `code` + `data` 键
-- **HTTP 状态码不变**：HTTP 状态码仍然语义正确，`code` 字段为冗余镜像
-- **非 JSON 透传**：非 `application/json` 响应原样返回
-
-### 8.4 Schema 定义
-
-`schemas/response.py` 提供泛型模型 `ApiResp[T]`，供类型提示使用：
-
-```python
-class ApiResp(BaseModel, Generic[T]):
-    code: int
-    message: str
-    data: T | None = None
-
-
-### 8.5 兼容性说明
-
-**特例：OAuth2 登录接口**
-为了兼容 OAuth2 协议标准及 Swagger UI 的自动授权功能，`/api/v1/login/access-token` 接口**不使用**中间件或 `ApiResp` 手动包装，直接返回平铺的 `TokenResp` 结构（包含 `access_token` 和 `token_type`）。这确保了 Swagger UI 能正确解析并自动注入 Authorization Header。
-```
+机制：
+- 路由处理函数仍直接返回 ORM 对象或普通 dict。
+- `UnifiedResponseMiddleware` 捕获正常的 `2xx` 响应，自动嵌套一层 `ApiResp`。
+- 全局异常处理器 (ExceptionHandler) 捕获 4xx/5xx，输出对应 code 且 data 为 `null`。
+- 特例：遵循 OAuth2 标准的 `/login/access-token` 豁免包装。
 
 ---
 
-## 9. 认证与安全
+## 9. 测试架构
 
-### 9.1 认证流程
+后端具备极高的测试标准，测试覆盖率要求 100%。
 
-```
-客户端 POST /login/access-token
-  → login_service.authenticate()
-    → 查询用户（邮箱）
-    → verify_password()（Argon2/Bcrypt）
-    → 返回 User 对象
-    → create_access_token(user.id)
-    → JWT payload: { sub: user_id, exp: ... }
-    → 返回 { access_token, token_type: "bearer" }
-
-后续请求携带 Authorization: Bearer <token>
-  → get_current_user()
-    → jwt.decode()
-    → session.get(User, token_data.sub)
-    → 返回 User 对象
-```
-
-### 9.2 密码哈希策略
-
-使用 `pwdlib` 支持双算法：
-
-- **主算法**：Argon2（内存困难，更安全）
-- **兼容算法**：Bcrypt（向后兼容旧哈希）
-- **自动升级**：`verify_and_update()` 在验证成功后，若哈希算法过时则自动返回新哈希，服务层检测到后立即更新数据库
-
-### 9.3 防时序攻击
-
-用户不存在时，仍执行一次 `verify_password(password, DUMMY_HASH)`，避免通过响应时间差枚举有效邮箱。
-
-### 9.4 JWT 配置
-
-| 参数 | 值 |
-|------|----|
-| 算法 | HS256 |
-| 默认有效期 | 60 × 24 × 8 分钟（8 天） |
-| Payload | `{ sub: user_id, exp: timestamp }` |
-
----
-
-## 10. 依赖注入
-
-FastAPI 的依赖注入系统贯穿整个项目，`deps/` 目录统一管理所有可复用依赖：
-
-### 10.1 SessionDep
-
-```python
-# deps/db.py
-SessionDep = Annotated[Session, Depends(get_db)]
-```
-
-每个请求获得独立的 SQLModel `Session`，请求结束后自动关闭。
-
-### 10.2 CurrentUser
-
-```python
-# deps/auth.py
-CurrentUser = Annotated[User, Depends(get_current_user)]
-```
-
-解析 Bearer Token，查询并返回当前用户对象。Token 无效或用户不存在时抛出 403/404。
-
-### 10.3 require_permission
-
-```python
-# deps/permission.py
-Depends(require_permission("user", "create"))
-```
-
-工厂函数，返回一个检查特定 resource+action 权限的依赖。superuser 角色自动绕过权限检查。
-
-### 10.4 get_current_active_superuser
-
-```python
-# deps/auth.py
-Depends(get_current_active_superuser)
-```
-
-验证当前用户拥有 `"superuser"` 角色，用于管理员接口保护。
-
----
-
-## 11. 服务层
-
-### 11.1 login_service.py
-
-| 函数 | 说明 |
-|------|------|
-| `authenticate(session, email, password)` | 验证邮箱+密码，返回 User 或 None；自动处理哈希升级 |
-
-### 11.2 user_service.py
-
-| 函数 | 说明 |
-|------|------|
-| `get_user_by_email(session, email)` | 按邮箱查询用户 |
-| `create_user(session, user_create)` | 创建用户（哈希密码后存储） |
-| `get_roles_by_names(session, role_names)` | 批量查询角色 |
-| `create_user_with_roles(session, user_create)` | 创建用户并批量绑定角色，含完整校验 |
-
-`create_user_with_roles` 的业务校验：
-
-1. 邮箱唯一性检查
-2. 角色存在性检查（返回缺失角色名）
-3. 禁止分配 `"superuser"` 角色
-4. 使用 `flush()` 先获取用户 ID，再批量插入 UserRole
-
----
-
-## 12. Schema 定义
-
-Schema 与数据库模型分离，用于 API 请求/响应的序列化与校验：
-
-### 12.1 用户 Schema（schemas/user.py）
-
-```
-UserBase          email, is_active, full_name
-└── UserCreate  + password (8-128 字符)
-    └── UserCreateByAdmin  + password + roles: list[str]（至少1个）
-UserPublic  + id, created_at（响应用，不含密码）
-UserDetailResp  + 包含全局角色、所属班级及班级角色
-ClassMemberResp  + 班级成员详情（含角色、加入时间）
-ClassMemberAddReq  + user_id, role
-UserUpdatePasswordReq  + current_password, new_password
-UsersPublic       data: list[UserPublic], count: int
-```
-
-### 12.2 Token Schema（schemas/token.py）
-
-
-```
-TokenResp     access_token: str, token_type: str = "bearer"
-TokenPayload  sub: str | None
-```
-
----
-
-### 12.3 响应 Schema（schemas/response.py）
-
-```
-ApiResp[T]    code: int, message: str, data: T | None
-```
-
----
-
-## 13. 数据库迁移
-
-使用 **Alembic** 管理数据库 Schema 版本：
-
-- 迁移脚本位于 `app/alembic/versions/`
-- `env.py` 通过 `SQLModel.metadata` 自动感知所有模型变更
-- 当前唯一迁移：`6e903e91a10e` — 创建全部 RBAC 相关表
-
-**常用命令**
+- **测试组件**：`pytest` + `pytest-cov`
+- **隔离机制**：
+  - 测试期间，依赖覆盖会将 `get_db` 替换为测试专用的数据库。
+  - 使用 `fastapi.testclient.TestClient` 模拟 HTTP 请求。
+- **防时序攻击测试**：确保在账户不存在时，认证模块依然消耗相同计算周期以防扫描。
 
 ```bash
-# 在 backend/ 目录下执行
-alembic upgrade head          # 应用所有迁移
-alembic downgrade -1          # 回滚一个版本
-alembic revision --autogenerate -m "描述"  # 生成新迁移
+# 启动测试
+cd backend && uv run pytest --cov=app tests/
 ```
 
 ---
 
-## 14. 配置管理
+## 10. 部署与启动
 
-`core/config.py` 使用 `pydantic-settings` 的 `BaseSettings`，支持从 `.env` 文件和环境变量读取配置：
-
-| 配置项 | 默认值 | 说明 |
-|--------|--------|------|
-| `API_V1_STR` | `/api/v1` | API 前缀 |
-| `SECRET_KEY` | 随机生成 | JWT 签名密钥 |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | 11520（8天） | Token 有效期 |
-| `ENVIRONMENT` | `local` | 环境标识 |
-| `POSTGRES_SERVER` | `localhost` | 数据库主机 |
-| `POSTGRES_PORT` | `5432` | 数据库端口 |
-| `POSTGRES_USER` | `postgres` | 数据库用户 |
-| `POSTGRES_DB` | `""` | 数据库名 |
-| `FIRST_SUPERUSER` | `admin@example.com` | 初始超级用户邮箱 |
-| `FIRST_SUPERUSER_PASSWORD` | `changethis` | 初始超级用户密码 |
-| `BACKEND_CORS_ORIGINS` | `[]` | 允许的跨域来源 |
-| `FRONTEND_HOST` | `http://localhost:5173` | 前端地址（自动加入 CORS） |
-
-**安全校验**：生产环境下若 `SECRET_KEY`、`POSTGRES_PASSWORD`、`FIRST_SUPERUSER_PASSWORD` 仍为默认值 `"changethis"`，启动时直接抛出 `ValueError`。
-
-**网络访问**：开发服务器（Uvicorn）默认绑定配置已调整至 `0.0.0.0`，允许局域网内其他设备直接通过本机 IP 访问后端 API 接口。
-
----
-
-## 15. 测试架构
-
-### 15.1 测试策略
-
-项目包含两类测试：
-
-| 类型 | 位置 | 说明 |
-|------|------|------|
-| 单元测试 | `tests/services/` | 使用 monkeypatch 隔离依赖，不访问数据库 |
-| 集成测试 | `tests/api/` | 使用 TestClient + 真实数据库，测试完整请求链路 |
-
-项目已集成 **pytest-cov** 以生成详细的代码覆盖率报告。所有核心服务逻辑、API 路由、依赖和中间件等已完成严密的测试保护（涵盖各种越权、非法状态和边缘条件），目标维持 100% 覆盖率，并配备完整的自动化脚本支持（位于 `scripts/`）。
-
-### 15.2 测试 Fixtures（conftest.py）
-
-| Fixture | 作用域 | 说明 |
-|---------|--------|------|
-| `setup_test_database` | session | 通过 Alembic `upgrade head` 建表后执行 `init_db`（不在会话结束时删表） |
-| `session` | function | 每个测试独立 Session，测试后自动 rollback |
-| `client` | function | FastAPI TestClient，`raise_server_exceptions=False` |
-| `superuser_token_headers` | function | 超级用户 JWT 请求头 |
-| `normal_user_token_headers` | function | 普通用户（teacher 角色）JWT 请求头 |
-
-### 15.3 个人自服务接口测试（test_users_me.py）
-
-- 获取个人详情成功
-- 更新个人全名成功
-- 修改个人密码成功（含旧密码校验）
-- 旧密码错误拦截 (400)
-- 未认证访问拦截 (401)
-
-### 15.4 测试辅助断言函数
-
-| 函数 | 说明 |
-|------|------|
-| `assert_success(response, status_code)` | 断言成功响应，验证 code/message/data，返回 data |
-| `assert_error(response, status_code, message)` | 断言错误响应，验证 code/data=null，可选验证 message |
-
-### 15.4 依赖覆盖测试
-
-通过 `app.dependency_overrides[get_db] = get_test_db` 将数据库会话替换为测试专用 Session，确保测试与生产数据库隔离。
-
-### 15.5 测试覆盖范围
-
-**登录接口（test_login_router.py）**
-
-- 登录成功，验证 Token 返回
-- 凭证错误返回 400
-- 用户未激活返回 400
-- 表单字段缺失返回 422
-
-**管理员用户接口（test_users.py）**
-
-- 超级用户获取用户列表（含排序验证）
-- 分页参数测试
-- 普通用户访问返回 403
-- 未认证访问返回 401
-- 创建用户成功（含角色分配）
-- 更新用户信息成功（含全名、激活状态）
-- 更新用户密码（验证哈希正确性）
-- 更新用户角色（验证角色全量替换逻辑）
-- 超级用户自我修改允许
-- 越权修改其他超级管理员禁止 (403)
-- 非法赋予 superuser 角色禁止 (400)
-- 邮箱重复、角色不存在、用户不存在等异常边界测试
-- 用户详情查询 (GET /admin/users/{user_id}) 成功及 404 测试
-- 用户详情响应验证 (含班级、角色信息校验)
-- 用户删除 (DELETE /admin/users/{user_id}) 成功及级联清理验证
-- 禁止删除自己、禁止删除其他超级管理员拦截测试
-- 增强搜索过滤测试 (email, full_name, role, class_id)
-- 权限不足 (403) 与未认证 (401) 拦截测试
-
-**班级成员管理接口（test_classes.py）**
-
-- 获取班级成员列表（含关联数据校验）
-- 分页参数测试
-- 分配用户到班级（add_class_member）
-- 从班级移除用户（remove_class_member）
-- 权限及异常场景测试
-
-**教师视角接口（test_teacher.py）**
-
-- 获取教师参与的班级列表验证
-- 跨班级访问成员列表权限拦截 (403)
-- 班级成员列表详情验证
-
-**Dashboard 统计接口（test_dashboard.py）**
-
-- 系统总用户数统计验证
-- 系统总班级数统计验证
-- 非管理员访问拦截测试
-
-**边界与异常路径测试 (各模块)**
-
-- 班级成员重复添加拦截 (400)
-- 非法资源 ID (用户/班级) 的 404 响应验证
-- 密码长度边界校验 (Pydantic 422 拦截)
-- 教师视角下“空班级”或“无参与班级”的响应验证
-- 多维组合搜索 (email + class_id) 的准确性
-
-**登录服务（test_login_service.py）**
-
-- 用户不存在时返回 None，且执行 dummy hash 防时序攻击
-- 密码错误返回 None
-- 密码正确且需要升级哈希时自动更新
-- 密码正确且哈希无需升级时不触发写操作
-
----
-
-## 16. 启动流程
-
-```
-uvicorn app.main:app
-
-├── lifespan 钩子触发
-│   └── init_db(session)
-│       ├── 检查/创建内置角色（superuser / teacher / student）
-│       ├── 检查/创建内置权限（class/user 的 CRUD）
-│       ├── 检查/绑定角色-权限关系
-│       └── 检查/创建初始超级用户并绑定 superuser 角色
-├── 注册 UnifiedResponseMiddleware（统一响应包装）
-├── 注册 CORS 中间件（根据配置）
-├── 注册异常处理器（HTTPException / RequestValidationError / Exception）
-├── 挂载 api_router（前缀 /api/v1）
-├── add_pagination(app)
-└── 注册健康检查接口 GET /
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
-`init_db` 是幂等的——每次启动都会检查，已存在则跳过，不会重复创建。
-
----
-
-## 17. 待完善功能
-
-以下功能尚未实现或预留：
-
-| 位置 | 待完善内容 |
-|------|-----------|
-| `api/main.py` | 本地环境专用私有路由 |
-| `app/main.py` | Sentry DSN 错误监控集成 |
-| `app/agents/` | AI Agent 核心逻辑实现（预留目录） |
+`lifespan` 生命周期钩子会在应用启动前自动执行 `init_db()`，实现：
+1. 检查并补全系统所需的默认权限（`user:read` 等）。
+2. 初始化根管理员角色与默认账户（账号密码从 `.env` 获取）。
+3. 这保证了容器化或一键部署时环境开箱即用。

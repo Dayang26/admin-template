@@ -10,7 +10,7 @@ const PAGE_NAMES: Record<string, string> = {
   '/admin/users': '用户管理',
   '/admin/users/create': '创建用户',
   '/admin/audit-logs': '日志审计',
-  '/admin/roles': '角色管理',
+  '/admin/roles': '权限管理',
   '/admin/system-settings': '系统设置',
 }
 

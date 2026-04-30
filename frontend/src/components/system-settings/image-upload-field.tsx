@@ -42,26 +42,33 @@ export function ImageUploadField({ label, description, value, onChange, disabled
   }
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h4 className="text-sm font-medium leading-none mb-1.5">{label}</h4>
-        {description && <p className="text-sm text-muted-foreground">{description}</p>}
+    <div className="group space-y-4 rounded-xl border bg-card p-4 transition-all hover:shadow-md">
+      <div className="flex items-start justify-between">
+        <div className="space-y-1">
+          <h4 className="text-sm font-semibold leading-none text-foreground">{label}</h4>
+          {description && <p className="text-xs text-muted-foreground">{description}</p>}
+        </div>
       </div>
 
       <div className="flex items-center gap-6">
-        <div className="relative flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-dashed bg-muted">
+        <div 
+          className="relative flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-muted ring-offset-background transition-all group-hover:ring-2 group-hover:ring-ring group-hover:ring-offset-2"
+          style={{
+            backgroundImage: 'linear-gradient(45deg, #e5e7eb 25%, transparent 25%), linear-gradient(-45deg, #e5e7eb 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e5e7eb 75%), linear-gradient(-45deg, transparent 75%, #e5e7eb 75%)',
+            backgroundSize: '12px 12px',
+            backgroundPosition: '0 0, 0 6px, 6px 6px, 6px 0',
+          }}
+        >
           {value.url ? (
-            <>
-              <img src={value.url} alt="Preview" className="h-full w-full object-contain p-1" />
-            </>
+            <img src={value.url} alt="Preview" className="h-full w-full object-contain p-2" />
           ) : (
-            <div className="text-muted-foreground">
-              <Upload className="size-6" />
+            <div className="text-muted-foreground/40">
+              <Upload className="size-8" />
             </div>
           )}
         </div>
 
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-1 flex-col gap-3">
           <input
             type="file"
             accept="image/*"
@@ -70,25 +77,33 @@ export function ImageUploadField({ label, description, value, onChange, disabled
             onChange={handleFileChange}
             disabled={disabled || isPending}
           />
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               type="button"
-              variant="outline"
+              variant="secondary"
               size="sm"
+              className="h-8"
               disabled={disabled || isPending}
               onClick={() => inputRef.current?.click()}
             >
-              {isPending ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Upload className="mr-2 size-4" />}
-              {value.url ? '更换图片' : '上传图片'}
+              {isPending ? <Loader2 className="mr-1.5 size-3.5 animate-spin" /> : <Upload className="mr-1.5 size-3.5" />}
+              {value.url ? '更换' : '上传图片'}
             </Button>
             {value.url && !disabled && (
-              <Button type="button" variant="ghost" size="sm" onClick={handleClear} disabled={isPending}>
-                <X className="mr-2 size-4" />
-                清除
+              <Button 
+                type="button" 
+                variant="ghost" 
+                size="sm" 
+                className="h-8 text-destructive hover:text-destructive hover:bg-destructive/10" 
+                onClick={handleClear} 
+                disabled={isPending}
+              >
+                <X className="mr-1.5 size-3.5" />
+                移除
               </Button>
             )}
           </div>
-          <p className="text-xs text-muted-foreground">支持 PNG, JPG, WEBP, ICO 等格式。建议大小不超过 2MB。</p>
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-medium">支持 PNG, JPG, WEBP, ICO (Max 2MB)</p>
         </div>
       </div>
     </div>
