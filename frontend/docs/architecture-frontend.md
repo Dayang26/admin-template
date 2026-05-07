@@ -164,13 +164,3 @@ export default defineConfig({
 
 ### 部署规范
 生产环境下打包输出纯静态资产至 `dist`。配置 Nginx 时仅需将非命中资源指向 `index.html` 即可完成前端路由的无缝回退支持。
-
----
-
-## 8. 待补工程能力
-
-以下能力当前尚未接入，建议在业务稳定后逐步补齐：
-
-- **前端单元测试**：Vitest + Testing Library
-- **E2E 测试**：Playwright
-- **通用 DataTable 组件**：基于 TanStack Table 封装可复用的数据表格
