@@ -16,6 +16,7 @@ interface AuthContextType {
   isLoading: boolean
   login: (token: string) => Promise<UserDetail | undefined>
   logout: () => void
+  updateCurrentUser: (patch: Partial<UserDetail>) => void
   hasPermission: (permission: string) => boolean
   isSuperuser: boolean
 }
@@ -60,6 +61,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     navigate('/login')
   }, [navigate])
 
+  const updateCurrentUser = useCallback((patch: Partial<UserDetail>) => {
+    setUser((currentUser) => {
+      if (!currentUser) return currentUser
+      return {
+        ...currentUser,
+        ...patch,
+      }
+    })
+  }, [])
+
   useEffect(() => {
     if (token) {
       queueMicrotask(() => {
@@ -84,6 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isLoading,
     login,
     logout,
+    updateCurrentUser,
     hasPermission,
     isSuperuser: user?.roles.includes('superuser') ?? false,
   }

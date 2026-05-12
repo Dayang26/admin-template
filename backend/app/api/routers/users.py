@@ -1,4 +1,7 @@
-from fastapi import APIRouter
+from typing import Annotated
+
+from fastapi import APIRouter, File
+from fastapi import UploadFile as FastAPIUploadFile
 
 from app.deps import AuditInfo, SessionDep
 from app.deps.audit import log_audit
@@ -32,7 +35,39 @@ def update_user_me(
 
     log_audit(session, action="更新个人资料", detail=f"姓名: {user_in.full_name}", **audit)
 
-    return Response.ok(data=UserPublicResp.model_validate(user))
+    return Response.ok(data=user_service.build_user_public_resp(user))
+
+
+@router.post("/me/avatar", response_model=Response[UserPublicResp])
+def upload_avatar_me(
+    *,
+    session: SessionDep,
+    current_user: CurrentUser,
+    audit: AuditInfo,
+    file: Annotated[FastAPIUploadFile, File(description="头像图片文件。仅支持图片。")],
+) -> Response[UserPublicResp]:
+    """上传或替换当前用户头像。"""
+    user = user_service.replace_user_avatar(
+        session=session,
+        current_user=current_user,
+        file=file,
+        audit_info=audit,
+    )
+    log_audit(session, action="更新头像", detail=f"文件: {file.filename}", **audit)
+    return Response.ok(data=user_service.build_user_public_resp(user))
+
+
+@router.delete("/me/avatar", response_model=Response[UserPublicResp])
+def remove_avatar_me(
+    *,
+    session: SessionDep,
+    current_user: CurrentUser,
+    audit: AuditInfo,
+) -> Response[UserPublicResp]:
+    """移除当前用户头像。"""
+    user = user_service.remove_user_avatar(session=session, current_user=current_user)
+    log_audit(session, action="移除头像", **audit)
+    return Response.ok(data=user_service.build_user_public_resp(user))
 
 
 @router.patch("/me/password", response_model=Response[None])

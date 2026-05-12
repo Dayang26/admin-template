@@ -22,6 +22,8 @@ class UserCreateByAdminReq(UserBase):
 
 class UserPublicResp(UserBase):
     id: uuid.UUID
+    avatar_file_id: uuid.UUID | None = None
+    avatar_url: str | None = None
     created_at: datetime
 
 

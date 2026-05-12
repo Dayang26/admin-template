@@ -57,8 +57,10 @@ def get_users(
         for user in users:
             # 查询该用户的角色
             role_names = [ur.role.name for ur in session.exec(select(UserRole).where(UserRole.user_id == user.id)).all() if ur.role]
-            resp = UserPublicWithRolesResp.model_validate(user)
-            resp.roles = role_names
+            resp = UserPublicWithRolesResp(
+                **user_service.build_user_public_resp(user).model_dump(),
+                roles=role_names,
+            )
             result.append(resp)
         return result
 
@@ -84,7 +86,7 @@ def create_user_by_admin(*, session: SessionDep, user_in: UserCreateByAdminReq, 
         status_code=201,
     )
 
-    return Response.ok(data=UserPublicResp.model_validate(user), code=201)
+    return Response.ok(data=user_service.build_user_public_resp(user), code=201)
 
 
 @router.patch("/{user_id}", dependencies=[Depends(require_permission("user", "update"))], response_model=Response[UserPublicResp])
@@ -121,7 +123,7 @@ def update_user_by_admin(
         **audit,
     )
 
-    return Response.ok(data=UserPublicResp.model_validate(user))
+    return Response.ok(data=user_service.build_user_public_resp(user))
 
 
 @router.get("/{user_id}", dependencies=[Depends(require_permission("user", "read"))], response_model=Response[UserDetailResp])

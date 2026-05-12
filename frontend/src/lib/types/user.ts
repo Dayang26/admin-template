@@ -2,6 +2,8 @@ export interface UserPublic {
   id: string
   email: string
   full_name: string | null
+  avatar_file_id: string | null
+  avatar_url: string | null
   is_active: boolean
   created_at: string
   roles?: string[]

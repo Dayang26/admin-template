@@ -12,6 +12,22 @@ export async function updateMe(data: { full_name?: string | null }): Promise<Use
   })
 }
 
+export async function uploadMyAvatar(file: File): Promise<UserPublic> {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  return apiClient<UserPublic>('/api/v1/users/me/avatar', {
+    method: 'POST',
+    body: formData,
+  })
+}
+
+export async function removeMyAvatar(): Promise<UserPublic> {
+  return apiClient<UserPublic>('/api/v1/users/me/avatar', {
+    method: 'DELETE',
+  })
+}
+
 export async function changePassword(data: {
   current_password: string
   new_password: string

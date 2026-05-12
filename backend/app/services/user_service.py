@@ -1,18 +1,30 @@
+import logging
 import uuid
+from typing import TYPE_CHECKING
 
 from fastapi import HTTPException
+from fastapi import UploadFile as FastAPIUploadFile
 from sqlmodel import Session, select
 
 from app.core.security import get_password_hash, verify_password
-from app.models.db import Role, User, UserRole
+from app.models.db import Role, UploadFile, User, UserRole
+from app.schemas.upload import UploadFileType, UploadVisibility
 from app.schemas.user import (
     UserCreateByAdminReq,
     UserCreateReq,
     UserDetailResp,
+    UserPublicResp,
     UserUpdateMeReq,
     UserUpdatePasswordReq,
     UserUpdateReq,
 )
+from app.services import upload_service
+
+if TYPE_CHECKING:
+    from app.deps.audit import AuditInfo
+
+logger = logging.getLogger(__name__)
+USER_AVATAR_UPLOAD_PURPOSE = "user_avatar"
 
 
 def get_user_by_email(*, session: Session, email: str) -> User | None:
@@ -31,6 +43,15 @@ def create_user(*, session: Session, user_create: UserCreateReq) -> User:
     session.commit()
     session.refresh(db_obj)
     return db_obj
+
+
+def build_user_public_resp(user: User) -> UserPublicResp:
+    avatar_file = user.avatar_file
+    avatar_url = avatar_file.public_url if avatar_file else None
+    return UserPublicResp(
+        **user.model_dump(),
+        avatar_url=avatar_url,
+    )
 
 
 def get_roles_by_names(*, session: Session, role_names: list[str]) -> list[Role]:
@@ -158,6 +179,60 @@ def update_user_me(*, session: Session, user_update: UserUpdateMeReq, current_us
     return current_user
 
 
+def replace_user_avatar(
+    *,
+    session: Session,
+    current_user: User,
+    file: FastAPIUploadFile,
+    audit_info: "AuditInfo",
+) -> User:
+    previous_avatar_file_id = current_user.avatar_file_id
+    uploaded_avatar = upload_service.process_upload(
+        session=session,
+        file=file,
+        file_type=UploadFileType.image.value,
+        visibility=UploadVisibility.public.value,
+        purpose=USER_AVATAR_UPLOAD_PURPOSE,
+        created_by_id=current_user.id,
+        audit_info=audit_info,
+        log_upload_audit=False,
+    )
+
+    try:
+        current_user.avatar_file_id = uploaded_avatar.id
+        session.add(current_user)
+        session.commit()
+        session.refresh(current_user)
+    except Exception:
+        session.rollback()
+        _cleanup_avatar_upload(session=session, upload_file_id=uploaded_avatar.id, owner_id=current_user.id)
+        raise
+
+    if previous_avatar_file_id and previous_avatar_file_id != uploaded_avatar.id:
+        _cleanup_avatar_upload(session=session, upload_file_id=previous_avatar_file_id, owner_id=current_user.id)
+
+    return current_user
+
+
+def remove_user_avatar(*, session: Session, current_user: User) -> User:
+    previous_avatar_file_id = current_user.avatar_file_id
+    if previous_avatar_file_id is None:
+        return current_user
+
+    current_user.avatar_file_id = None
+    session.add(current_user)
+    session.commit()
+    session.refresh(current_user)
+
+    _cleanup_avatar_upload(
+        session=session,
+        upload_file_id=previous_avatar_file_id,
+        owner_id=current_user.id,
+    )
+
+    return current_user
+
+
 def get_user_detail(*, session: Session, user_id: uuid.UUID) -> UserDetailResp:
     """Get user details including roles and permissions."""
     user = session.get(User, user_id)
@@ -180,7 +255,7 @@ def get_user_detail(*, session: Session, user_id: uuid.UUID) -> UserDetailResp:
                     permissions_set.add(f"{rp.permission.resource}:{rp.permission.action}")
 
     return UserDetailResp(
-        **user.model_dump(),
+        **build_user_public_resp(user).model_dump(),
         roles=roles,
         permissions=sorted(permissions_set),
     )
@@ -227,3 +302,19 @@ def update_user_password(*, session: Session, password_in: UserUpdatePasswordReq
     current_user.hashed_password = get_password_hash(password_in.new_password)
     session.add(current_user)
     session.commit()
+
+
+def _cleanup_avatar_upload(*, session: Session, upload_file_id: uuid.UUID, owner_id: uuid.UUID) -> None:
+    upload_file = session.get(UploadFile, upload_file_id)
+    if not upload_file:
+        return
+    if upload_file.purpose != USER_AVATAR_UPLOAD_PURPOSE:
+        return
+    if upload_file.created_by_id != owner_id:
+        return
+
+    try:
+        upload_service.delete_upload_file(session=session, upload_file=upload_file)
+    except Exception:
+        session.rollback()
+        logger.exception("Failed to cleanup avatar upload: %s", upload_file_id)

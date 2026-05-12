@@ -1,15 +1,18 @@
 import logging
 import uuid
+from typing import TYPE_CHECKING
 
 from fastapi import HTTPException
 from fastapi import UploadFile as FastAPIUploadFile
 from sqlmodel import Session
 
 from app.core.config import settings
-from app.deps.audit import AuditInfo, log_audit
 from app.models.db import UploadFile
 from app.schemas.upload import UploadFileResp, UploadFileType, UploadVisibility
 from app.services.storage.local import LocalStorageProvider
+
+if TYPE_CHECKING:
+    from app.deps.audit import AuditInfo
 
 storage_provider = LocalStorageProvider()
 logger = logging.getLogger(__name__)
@@ -74,7 +77,8 @@ def process_upload(
     visibility: str,
     purpose: str | None,
     created_by_id: uuid.UUID,
-    audit_info: AuditInfo,
+    audit_info: "AuditInfo",
+    log_upload_audit: bool = True,
 ) -> UploadFileResp:
     if file_type != UploadFileType.image.value:
         raise HTTPException(status_code=400, detail="Only image upload is supported")
@@ -123,12 +127,23 @@ def process_upload(
             logger.exception("Failed to delete orphan uploaded file: %s", stored_file.storage_key)
         raise
 
-    # log audit
-    log_audit(
-        session=session,
-        action="上传文件",
-        detail=f"文件: {file.filename}, 类型: {file_type}, 可见性: {visibility}, 大小: {stored_file.size_bytes}",
-        **audit_info,
-    )
+    if log_upload_audit:
+        from app.deps.audit import log_audit
+
+        log_audit(
+            session=session,
+            action="上传文件",
+            detail=f"文件: {file.filename}, 类型: {file_type}, 可见性: {visibility}, 大小: {stored_file.size_bytes}",
+            **audit_info,
+        )
 
     return UploadFileResp.model_validate(db_obj)
+
+
+def delete_upload_file(session: Session, upload_file: UploadFile) -> None:
+    storage_provider.delete(
+        visibility=upload_file.visibility,
+        storage_key=upload_file.storage_key,
+    )
+    session.delete(upload_file)
+    session.commit()

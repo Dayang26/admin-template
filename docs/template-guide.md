@@ -24,7 +24,7 @@
 
 - **后端**：FastAPI + SQLModel + PostgreSQL，提供 RESTful API。
 - **前端**：React 19 + Vite + TypeScript + Shadcn/ui，纯 SPA 客户端渲染。
-- **内置功能**：用户管理、角色权限管理（RBAC）、操作审计日志、仪表盘统计、系统全局设置。
+- **内置功能**：用户管理、角色权限管理（RBAC）、操作审计日志、仪表盘统计、系统全局设置、个人资料维护（姓名/头像/密码）。
 
 ---
 

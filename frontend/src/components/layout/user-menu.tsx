@@ -1,6 +1,7 @@
 import { LogOut, User } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/lib/auth/context'
+import { getUserInitials } from '@/lib/utils/user-avatar'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,20 +10,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { SidebarMenuButton } from '@/components/ui/sidebar'
-
-function getInitials(name: string | null, email: string): string {
-  if (name) {
-    return name
-      .split(' ')
-      .map((n) => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2)
-  }
-  return email[0].toUpperCase()
-}
 
 export function UserMenu() {
   const { user, logout } = useAuth()
@@ -38,8 +27,11 @@ export function UserMenu() {
           className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
         >
           <Avatar className="h-8 w-8">
+            {user.avatar_url && (
+              <AvatarImage src={user.avatar_url} alt={user.full_name ?? user.email} />
+            )}
             <AvatarFallback className="bg-primary/10 text-primary text-xs">
-              {getInitials(user.full_name, user.email)}
+              {getUserInitials(user.full_name, user.email)}
             </AvatarFallback>
           </Avatar>
           <div className="grid flex-1 text-left text-sm leading-tight">

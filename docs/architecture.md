@@ -265,6 +265,8 @@ t_upload_file ──────────────────────
 **用户自服务接口（需登录）：**
 - `GET /api/v1/users/me` - 获取当前用户信息
 - `PATCH /api/v1/users/me` - 更新个人资料
+- `POST /api/v1/users/me/avatar` - 上传或替换当前用户头像
+- `DELETE /api/v1/users/me/avatar` - 移除当前用户头像
 - `PATCH /api/v1/users/me/password` - 修改密码
 
 **管理端接口（需登录 + 相应权限）：**
@@ -278,7 +280,7 @@ t_upload_file ──────────────────────
 - `GET /api/v1/admin/audit-logs` - 审计日志列表
 - `GET /api/v1/admin/system-settings` - 获取系统设置
 - `PATCH /api/v1/admin/system-settings` - 更新系统设置
-- `POST /api/v1/admin/upload` - 文件上传
+- `POST /api/v1/uploads` - 通用图片上传（系统设置素材）
 
 ### 4.5 统一响应结构
 

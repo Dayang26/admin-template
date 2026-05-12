@@ -11,7 +11,7 @@
 ## ✨ 核心特性
 
 - **纯净版底座**：彻底剥离具体业务逻辑，只保留所有后台系统都需要的**基础设施**。
-- **现代化认证**：基于 JWT (OAuth2 规范) 的登录认证与自服务（修改资料、修改密码）。
+- **现代化认证**：基于 JWT (OAuth2 规范) 的登录认证与自服务（修改资料、上传/更换头像、修改密码）。
 - **细粒度 RBAC**：基于资源与操作的权限控制，抛弃硬编码，后台完全可控角色及权限。
 - **动态系统设置**：前端 UI 不硬编码 Logo、系统名称、Favicon，全盘由后台设置接口动态下发。
 - **文件上传服务**：内置基于本地存储的静态文件上传逻辑及安全大小控制。
@@ -41,6 +41,58 @@ docker compose -f docker/docker-compose.yml up -d --build
    ```bash
    make dev
    ```
+
+### 选项 C：手动分别启动数据库、后端、前端
+
+如果你希望像日常调试一样分别控制每个服务，推荐使用下面这组命令。
+
+1. **准备 `.env`**
+   ```bash
+   cp .env.example .env
+   ```
+
+   最少需要确认这些值：
+   ```dotenv
+   POSTGRES_SERVER=localhost
+   POSTGRES_PORT=5432
+   POSTGRES_DB=app
+   POSTGRES_USER=postgres
+   POSTGRES_PASSWORD=your-password
+
+   SECRET_KEY=replace-with-a-random-string
+   FIRST_SUPERUSER=admin@example.com
+   FIRST_SUPERUSER_PASSWORD=admin12345
+   ```
+
+2. **启动数据库**
+   ```bash
+   docker compose -f docker/docker-compose.yml up -d db
+   ```
+
+3. **启动后端**
+   ```bash
+   cd backend
+   uv sync
+   uv run alembic -c app/alembic.ini upgrade head
+   uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+   ```
+
+4. **启动前端**
+   ```bash
+   cd frontend
+   pnpm install
+   pnpm dev --host 0.0.0.0 --port 5173
+   ```
+
+5. **访问地址**
+   - 前端：`http://localhost:5173`
+   - 后端：`http://localhost:8000`
+
+> **数据库密码提示**
+>
+> 如果你修改过 `.env` 里的 `POSTGRES_PASSWORD`，但之前已经用其他密码初始化过 Docker 数据卷，后端可能会报 `password authentication failed for user "postgres"`。这时需要二选一：
+> - 删除旧数据库卷后重新初始化容器
+> - 或把容器内的 PostgreSQL 密码改成和 `.env` 一致
 
 系统启动后，访问 `http://localhost:5173`。首次启动会自动在数据库创建 `admin@example.com`（密码见 `.env` 中的 `FIRST_SUPERUSER_PASSWORD`），请使用该账号登录。
 

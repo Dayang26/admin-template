@@ -1,19 +1,22 @@
-import { useState } from 'react'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
-import { toast } from 'sonner'
+import { useRef, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { Loader2, Trash2, Upload } from 'lucide-react'
+import { useForm } from 'react-hook-form'
+import { toast } from 'sonner'
+import { z } from 'zod'
+import { PageHeader } from '@/components/shared/page-header'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { PageHeader } from '@/components/shared/page-header'
 import { useAuth } from '@/lib/auth/context'
-import { updateMe, changePassword } from '@/lib/api/me'
+import { changePassword, removeMyAvatar, updateMe, uploadMyAvatar } from '@/lib/api/me'
 import { getRoleLabel } from '@/lib/utils/role-labels'
+import { getUserInitials } from '@/lib/utils/user-avatar'
 
 const nameSchema = z.object({
   full_name: z.string().max(255, '姓名最多 255 个字符').optional(),
@@ -34,9 +37,10 @@ type NameForm = z.infer<typeof nameSchema>
 type PasswordForm = z.infer<typeof passwordSchema>
 
 export function ProfilePage() {
-  const { user } = useAuth()
+  const { user, updateCurrentUser } = useAuth()
   const [nameSubmitting, setNameSubmitting] = useState(false)
   const [pwdSubmitting, setPwdSubmitting] = useState(false)
+  const avatarInputRef = useRef<HTMLInputElement>(null)
 
   const nameForm = useForm<NameForm>({
     resolver: zodResolver(nameSchema),
@@ -57,12 +61,22 @@ export function ProfilePage() {
       changePassword(data),
   })
 
+  const uploadAvatarMutation = useMutation({
+    mutationFn: (file: File) => uploadMyAvatar(file),
+  })
+
+  const removeAvatarMutation = useMutation({
+    mutationFn: () => removeMyAvatar(),
+  })
+
   function handleNameSubmit(data: NameForm) {
     setNameSubmitting(true)
     updateNameMutation.mutate(
       { full_name: data.full_name || null },
       {
-        onSuccess: () => {
+        onSuccess: (updatedUser) => {
+          updateCurrentUser(updatedUser)
+          nameForm.reset({ full_name: updatedUser.full_name ?? '' })
           toast.success('姓名已更新')
           setNameSubmitting(false)
         },
@@ -72,6 +86,35 @@ export function ProfilePage() {
         },
       },
     )
+  }
+
+  function handleAvatarUpload(file: File) {
+    uploadAvatarMutation.mutate(file, {
+      onSuccess: (updatedUser) => {
+        updateCurrentUser(updatedUser)
+        toast.success('头像已更新')
+      },
+      onError: (err) => {
+        toast.error(err instanceof Error ? err.message : '头像上传失败')
+      },
+      onSettled: () => {
+        if (avatarInputRef.current) {
+          avatarInputRef.current.value = ''
+        }
+      },
+    })
+  }
+
+  function handleAvatarRemove() {
+    removeAvatarMutation.mutate(undefined, {
+      onSuccess: (updatedUser) => {
+        updateCurrentUser(updatedUser)
+        toast.success('头像已移除')
+      },
+      onError: (err) => {
+        toast.error(err instanceof Error ? err.message : '头像移除失败')
+      },
+    })
   }
 
   function handlePasswordSubmit(data: PasswordForm) {
@@ -94,6 +137,8 @@ export function ProfilePage() {
 
   if (!user) return null
 
+  const avatarMutationPending = uploadAvatarMutation.isPending || removeAvatarMutation.isPending
+
   return (
     <div className="space-y-6">
       <PageHeader title="个人资料" description="查看和维护当前账号信息" />
@@ -102,7 +147,76 @@ export function ProfilePage() {
         <CardHeader>
           <CardTitle>基本信息</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-6">
+          <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
+            <Avatar className="h-24 w-24 border">
+              {user.avatar_url && (
+                <AvatarImage src={user.avatar_url} alt={user.full_name ?? user.email} className="object-cover" />
+              )}
+              <AvatarFallback className="bg-primary/10 text-primary text-2xl">
+                {getUserInitials(user.full_name, user.email)}
+              </AvatarFallback>
+            </Avatar>
+
+            <div className="space-y-3">
+              <div>
+                <p className="text-sm font-medium text-foreground">
+                  {user.full_name ?? '未设置姓名'}
+                </p>
+                <p className="text-sm text-muted-foreground">{user.email}</p>
+              </div>
+
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/x-icon,image/vnd.microsoft.icon"
+                className="hidden"
+                disabled={avatarMutationPending}
+                onChange={(event) => {
+                  const file = event.target.files?.[0]
+                  if (file) {
+                    handleAvatarUpload(file)
+                  }
+                }}
+              />
+
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => avatarInputRef.current?.click()}
+                  disabled={avatarMutationPending}
+                >
+                  {uploadAvatarMutation.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Upload className="mr-2 h-4 w-4" />
+                  )}
+                  {user.avatar_url ? '更换头像' : '上传头像'}
+                </Button>
+                {user.avatar_url && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleAvatarRemove}
+                    disabled={avatarMutationPending}
+                  >
+                    {removeAvatarMutation.isPending ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="mr-2 h-4 w-4" />
+                    )}
+                    移除头像
+                  </Button>
+                )}
+              </div>
+
+              <p className="text-xs text-muted-foreground">
+                支持 PNG、JPG、WEBP、ICO，文件大小不超过 2MB。
+              </p>
+            </div>
+          </div>
+
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <p className="text-sm text-muted-foreground">邮箱</p>

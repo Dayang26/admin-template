@@ -1,8 +1,26 @@
+from pathlib import Path
+
+import pytest
 from fastapi.testclient import TestClient
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from app.core.config import settings
+from app.models.db import UploadFile, User
 from tests.conftest import assert_error, assert_success
+
+
+@pytest.fixture()
+def isolate_avatar_upload_dirs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(settings, "UPLOAD_PUBLIC_DIR", str(tmp_path / "public"))
+    monkeypatch.setattr(settings, "UPLOAD_PRIVATE_DIR", str(tmp_path / "private"))
+
+
+def _png_content() -> bytes:
+    return b"\x89PNG\r\n\x1a\n" + b"\x00" * 10
+
+
+def _saved_files(root: Path) -> list[Path]:
+    return [path for path in root.rglob("*") if path.is_file()]
 
 
 def test_update_user_me_success(client: TestClient, normal_user_token_headers: dict[str, str], session: Session) -> None:  # noqa: ARG001
@@ -55,6 +73,88 @@ def test_read_user_me_success(client: TestClient, normal_user_token_headers: dic
     assert data["email"] == "normal@example.com"
     assert "roles" in data
     assert "permissions" in data
+
+
+def test_upload_user_avatar_success(
+    client: TestClient,
+    normal_user_token_headers: dict[str, str],
+    session: Session,
+    tmp_path: Path,
+    isolate_avatar_upload_dirs: None,
+) -> None:
+    assert isolate_avatar_upload_dirs is None
+    response = client.post(
+        f"{settings.API_V1_STR}/users/me/avatar",
+        headers=normal_user_token_headers,
+        files={"file": ("avatar.png", _png_content(), "image/png")},
+    )
+    data = assert_success(response)
+    assert data["avatar_file_id"] is not None
+    assert data["avatar_url"].startswith("/uploads/public/")
+
+    current_user = session.exec(select(User).where(User.email == "normal@example.com")).first()
+    assert current_user is not None
+    assert current_user.avatar_file_id is not None
+
+    upload_file = session.get(UploadFile, current_user.avatar_file_id)
+    assert upload_file is not None
+    assert upload_file.purpose == "user_avatar"
+    assert _saved_files(tmp_path / "public")
+
+
+def test_replace_user_avatar_cleans_previous_upload(
+    client: TestClient,
+    normal_user_token_headers: dict[str, str],
+    session: Session,
+    tmp_path: Path,
+    isolate_avatar_upload_dirs: None,
+) -> None:
+    assert isolate_avatar_upload_dirs is None
+    first_response = client.post(
+        f"{settings.API_V1_STR}/users/me/avatar",
+        headers=normal_user_token_headers,
+        files={"file": ("avatar-1.png", _png_content(), "image/png")},
+    )
+    first_data = assert_success(first_response)
+
+    second_response = client.post(
+        f"{settings.API_V1_STR}/users/me/avatar",
+        headers=normal_user_token_headers,
+        files={"file": ("avatar-2.png", _png_content(), "image/png")},
+    )
+    second_data = assert_success(second_response)
+
+    assert second_data["avatar_file_id"] != first_data["avatar_file_id"]
+    assert session.get(UploadFile, first_data["avatar_file_id"]) is None
+    assert session.get(UploadFile, second_data["avatar_file_id"]) is not None
+    assert len(_saved_files(tmp_path / "public")) == 1
+
+
+def test_remove_user_avatar_success(
+    client: TestClient,
+    normal_user_token_headers: dict[str, str],
+    session: Session,
+    tmp_path: Path,
+    isolate_avatar_upload_dirs: None,
+) -> None:
+    assert isolate_avatar_upload_dirs is None
+    upload_response = client.post(
+        f"{settings.API_V1_STR}/users/me/avatar",
+        headers=normal_user_token_headers,
+        files={"file": ("avatar.png", _png_content(), "image/png")},
+    )
+    uploaded_data = assert_success(upload_response)
+
+    remove_response = client.delete(
+        f"{settings.API_V1_STR}/users/me/avatar",
+        headers=normal_user_token_headers,
+    )
+    removed_data = assert_success(remove_response)
+
+    assert removed_data["avatar_file_id"] is None
+    assert removed_data["avatar_url"] is None
+    assert session.get(UploadFile, uploaded_data["avatar_file_id"]) is None
+    assert _saved_files(tmp_path / "public") == []
 
 
 def test_update_password_me_success(client: TestClient, normal_user_token_headers: dict[str, str], session: Session) -> None:  # noqa: ARG001
