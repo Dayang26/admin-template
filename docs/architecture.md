@@ -250,7 +250,7 @@ t_upload_file ──────────────────────
 | `t_permission` | Permission | 最小权限单元（resource + action 唯一键） |
 | `t_user_role` | UserRole | 用户-角色关联 |
 | `t_role_permission` | RolePermission | 角色-权限关联 |
-| `t_audit_log` | AuditLog | 操作审计日志（用户、IP、操作类型、详情） |
+| `t_audit_log` | AuditLog | 操作审计日志（用户、IP、操作类型、展示详情、资源标识、结构化变更） |
 | `t_system_setting` | SystemSetting | 系统配置（key-value，含公开/私有属性） |
 | `t_upload_file` | UploadFile | 上传文件记录（路径、类型、大小、上传人） |
 

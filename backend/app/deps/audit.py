@@ -1,8 +1,9 @@
 import logging
 import uuid
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import Depends, Request
+from fastapi.encoders import jsonable_encoder
 from sqlmodel import Session
 
 from app.deps.auth import CurrentUser
@@ -45,6 +46,9 @@ def log_audit(
     method: str,
     path: str,
     detail: str | None = None,
+    resource_type: str | None = None,
+    resource_id: str | uuid.UUID | None = None,
+    changes: dict[str, Any] | None = None,
     status_code: int = 200,
     ip_address: str | None = None,
     user_agent: str | None = None,
@@ -58,6 +62,9 @@ def log_audit(
             path=path,
             action=action,
             detail=detail,
+            resource_type=resource_type,
+            resource_id=str(resource_id) if resource_id is not None else None,
+            changes=jsonable_encoder(changes) if changes is not None else None,
             status_code=status_code,
             ip_address=ip_address,
             user_agent=user_agent,

@@ -69,6 +69,8 @@ class TestLoginAuditLog:
         assert log.user_email == settings.FIRST_SUPERUSER
         assert log.method == "POST"
         assert "login" in log.path
+        assert log.resource_type == "user"
+        assert log.resource_id == str(log.user_id)
         assert log.status_code == 200
 
     def test_login_failure_no_audit_log(self, client: TestClient, session: Session):
@@ -111,6 +113,14 @@ class TestAdminUserAuditLog:
         assert log is not None
         assert "audit_test_user@example.com" in (log.detail or "")
         assert log.method == "POST"
+        assert log.resource_type == "user"
+        assert log.resource_id == response.json()["data"]["id"]
+        assert log.changes == {
+            "email": "audit_test_user@example.com",
+            "full_name": None,
+            "is_active": True,
+            "roles": [role_name],
+        }
 
     def test_update_user_creates_audit_log(self, client: TestClient, session: Session, superuser_token_headers: dict):
         """更新用户应记录审计日志。"""
@@ -142,6 +152,9 @@ class TestAdminUserAuditLog:
         log = _get_latest_audit_log(session, action="更新用户")
         assert log is not None
         assert "姓名" in (log.detail or "")
+        assert log.resource_type == "user"
+        assert log.resource_id == user_id
+        assert log.changes == {"full_name": "审计测试用户"}
 
     def test_delete_user_creates_audit_log(self, client: TestClient, session: Session, superuser_token_headers: dict):
         """删除用户应记录审计日志。"""
@@ -172,6 +185,9 @@ class TestAdminUserAuditLog:
         log = _get_latest_audit_log(session, action="删除用户")
         assert log is not None
         assert "audit_delete_test@example.com" in (log.detail or "")
+        assert log.resource_type == "user"
+        assert log.resource_id == user_id
+        assert log.changes == {"deleted": True, "email": "audit_delete_test@example.com"}
 
 
 class TestSelfServiceAuditLog:
@@ -284,6 +300,28 @@ class TestAuditLogFields:
         assert log.method == "PATCH"
         assert "/users/me" in log.path
         assert log.action == "更新个人资料"
+        assert log.resource_type == "user"
+        assert log.resource_id == str(log.user_id)
+        assert log.changes == {"full_name": "字段测试"}
         assert log.status_code == 200
         assert log.created_at is not None
         # IP 和 User-Agent 在测试环境中可能为 None 或 testclient
+
+    def test_audit_log_api_returns_structured_fields(self, client: TestClient, session: Session, superuser_token_headers: dict):
+        """审计日志接口应返回轻量结构化字段，同时保留 detail 展示字符串。"""
+        client.patch(
+            f"{settings.API_V1_STR}/users/me",
+            headers=superuser_token_headers,
+            json={"full_name": "接口字段测试"},
+        )
+
+        response = client.get(
+            f"{settings.API_V1_STR}/admin/audit-logs/?action=更新个人资料",
+            headers=superuser_token_headers,
+        )
+        data = assert_success(response)
+        latest_item = data["items"][0]
+        assert latest_item["detail"] == "姓名: 接口字段测试"
+        assert latest_item["resource_type"] == "user"
+        assert latest_item["resource_id"] == latest_item["user_id"]
+        assert latest_item["changes"] == {"full_name": "接口字段测试"}

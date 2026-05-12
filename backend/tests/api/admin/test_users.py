@@ -431,6 +431,9 @@ def test_reset_user_password_by_admin_logs_audit(client: TestClient, superuser_t
     assert log is not None
     assert user.email in (log.detail or "")
     assert log.method == "PATCH"
+    assert log.resource_type == "user"
+    assert log.resource_id == str(user.id)
+    assert log.changes == {"password": "reset"}
     assert log.status_code == 200
 
 

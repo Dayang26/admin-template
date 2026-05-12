@@ -33,7 +33,15 @@ def update_user_me(
     """更新当前用户个人资料。"""
     user = user_service.update_user_me(session=session, user_update=user_in, current_user=current_user)
 
-    log_audit(session, action="更新个人资料", detail=f"姓名: {user_in.full_name}", **audit)
+    log_audit(
+        session,
+        action="更新个人资料",
+        detail=f"姓名: {user_in.full_name}",
+        resource_type="user",
+        resource_id=current_user.id,
+        changes=user_in.model_dump(exclude_unset=True) or None,
+        **audit,
+    )
 
     return Response.ok(data=user_service.build_user_public_resp(user))
 
@@ -53,7 +61,15 @@ def upload_avatar_me(
         file=file,
         audit_info=audit,
     )
-    log_audit(session, action="更新头像", detail=f"文件: {file.filename}", **audit)
+    log_audit(
+        session,
+        action="更新头像",
+        detail=f"文件: {file.filename}",
+        resource_type="user",
+        resource_id=current_user.id,
+        changes={"avatar_file_id": user.avatar_file_id},
+        **audit,
+    )
     return Response.ok(data=user_service.build_user_public_resp(user))
 
 
@@ -66,7 +82,14 @@ def remove_avatar_me(
 ) -> Response[UserPublicResp]:
     """移除当前用户头像。"""
     user = user_service.remove_user_avatar(session=session, current_user=current_user)
-    log_audit(session, action="移除头像", **audit)
+    log_audit(
+        session,
+        action="移除头像",
+        resource_type="user",
+        resource_id=current_user.id,
+        changes={"avatar_file_id": None},
+        **audit,
+    )
     return Response.ok(data=user_service.build_user_public_resp(user))
 
 
@@ -81,6 +104,13 @@ def update_password_me(
     """修改当前用户密码。"""
     user_service.update_user_password(session=session, password_in=password_in, current_user=current_user)
 
-    log_audit(session, action="修改密码", **audit)
+    log_audit(
+        session,
+        action="修改密码",
+        resource_type="user",
+        resource_id=current_user.id,
+        changes={"password": "updated"},
+        **audit,
+    )
 
     return Response.ok(data=None, message="密码修改成功")

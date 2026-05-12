@@ -109,6 +109,9 @@ def update_system_setting(
         session,
         action="更新系统设置",
         detail=f"变更字段: {', '.join(changes)}",
+        resource_type="system_setting",
+        resource_id=setting.setting_key,
+        changes=update_data,
         **audit_info,
     )
 

@@ -134,6 +134,15 @@ def process_upload(
             session=session,
             action="上传文件",
             detail=f"文件: {file.filename}, 类型: {file_type}, 可见性: {visibility}, 大小: {stored_file.size_bytes}",
+            resource_type="upload_file",
+            resource_id=db_obj.id,
+            changes={
+                "original_filename": db_obj.original_filename,
+                "file_type": db_obj.file_type,
+                "visibility": db_obj.visibility,
+                "size_bytes": db_obj.size_bytes,
+                "purpose": db_obj.purpose,
+            },
             **audit_info,
         )
 

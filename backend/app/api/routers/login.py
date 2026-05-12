@@ -39,6 +39,8 @@ def login_access_token(
         session,
         action="用户登录",
         detail=f"邮箱: {from_data.username}",
+        resource_type="user",
+        resource_id=user.id,
         user_id=user.id,
         user_email=user.email,
         method="POST",

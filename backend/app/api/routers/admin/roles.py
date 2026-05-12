@@ -60,7 +60,16 @@ def create_role(
     session.commit()
     session.refresh(role)
 
-    log_audit(session, action="创建角色", detail=f"角色: {name}", **audit, status_code=201)
+    log_audit(
+        session,
+        action="创建角色",
+        detail=f"角色: {name}",
+        resource_type="role",
+        resource_id=role.id,
+        changes={"name": role.name, "description": role.description},
+        **audit,
+        status_code=201,
+    )
 
     return Response.ok(data=_role_to_dict(role, session), code=201)
 
@@ -98,7 +107,20 @@ def update_role(
     session.commit()
     session.refresh(role)
 
-    log_audit(session, action="更新角色", detail=f"角色: {role.name}", **audit)
+    structured_changes = {}
+    if name is not None:
+        structured_changes["name"] = role.name
+    if description is not None:
+        structured_changes["description"] = role.description
+    log_audit(
+        session,
+        action="更新角色",
+        detail=f"角色: {role.name}",
+        resource_type="role",
+        resource_id=role.id,
+        changes=structured_changes or None,
+        **audit,
+    )
 
     return Response.ok(data=_role_to_dict(role, session))
 
@@ -135,7 +157,15 @@ def delete_role(
     session.delete(role)
     session.commit()
 
-    log_audit(session, action="删除角色", detail=f"角色: {role_name}", **audit)
+    log_audit(
+        session,
+        action="删除角色",
+        detail=f"角色: {role_name}",
+        resource_type="role",
+        resource_id=role_id,
+        changes={"deleted": True, "name": role_name},
+        **audit,
+    )
 
     return Response.ok(data=None)
 
@@ -181,6 +211,9 @@ def update_role_permissions(
         session,
         action="更新角色权限",
         detail=f"角色: {role.name}, 权限: {', '.join(perm_names) or '无'}",
+        resource_type="role",
+        resource_id=role.id,
+        changes={"permissions": perm_names},
         **audit,
     )
 

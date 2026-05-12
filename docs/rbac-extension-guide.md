@@ -144,7 +144,15 @@ def delete_article(
     audit: AuditInfo,
 ) -> Response[None]:
     article_service.delete_article(session=session, article_id=article_id)
-    log_audit(session, action="删除文章", detail=f"文章ID: {article_id}", **audit)
+    log_audit(
+        session,
+        action="删除文章",
+        detail=f"文章ID: {article_id}",
+        resource_type="article",
+        resource_id=article_id,
+        changes={"deleted": True},
+        **audit,
+    )
     return Response.ok(data=None, message="文章已删除")
 ```
 

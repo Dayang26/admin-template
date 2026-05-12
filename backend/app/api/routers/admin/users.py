@@ -83,6 +83,14 @@ def create_user_by_admin(*, session: SessionDep, user_in: UserCreateByAdminReq, 
         session,
         action="创建用户",
         detail=f"邮箱: {user_in.email}, 角色: {', '.join(user_in.roles)}",
+        resource_type="user",
+        resource_id=user.id,
+        changes={
+            "email": user.email,
+            "full_name": user.full_name,
+            "is_active": user.is_active,
+            "roles": user_in.roles,
+        },
         **audit,
         status_code=201,
     )
@@ -117,10 +125,17 @@ def update_user_by_admin(
     if user_in.roles is not None:
         changes.append(f"角色: {', '.join(user_in.roles)}")
 
+    structured_changes = user_in.model_dump(exclude_unset=True, exclude={"password"})
+    if user_in.password is not None:
+        structured_changes["password"] = "updated"
+
     log_audit(
         session,
         action="更新用户",
         detail=f"用户: {user.email}, 变更: {'; '.join(changes)}" if changes else f"用户: {user.email}",
+        resource_type="user",
+        resource_id=user.id,
+        changes=structured_changes or None,
         **audit,
     )
 
@@ -152,6 +167,9 @@ def reset_user_password_by_admin(
         session,
         action="重置用户密码",
         detail=f"用户: {user.email}",
+        resource_type="user",
+        resource_id=user.id,
+        changes={"password": "reset"},
         **audit,
     )
 
@@ -184,6 +202,14 @@ def delete_user(
         current_user_id=current_user.id,
     )
 
-    log_audit(session, action="删除用户", detail=f"用户: {target_email}", **audit)
+    log_audit(
+        session,
+        action="删除用户",
+        detail=f"用户: {target_email}",
+        resource_type="user",
+        resource_id=user_id,
+        changes={"deleted": True, "email": target_email},
+        **audit,
+    )
 
     return Response.ok(data=None, message="用户已删除")
