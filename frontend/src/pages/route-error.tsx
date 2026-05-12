@@ -2,6 +2,27 @@ import { useRouteError, isRouteErrorResponse, Link } from 'react-router-dom'
 import { AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { ApiError } from '@/lib/api/client'
+
+function getRouteErrorCopy(status: number, fallback = '请求出错') {
+  if (status === 401) {
+    return { title: '401', message: '登录状态已过期，请重新登录' }
+  }
+
+  if (status === 403) {
+    return { title: '403', message: '权限不足，无法访问该页面' }
+  }
+
+  if (status === 404) {
+    return { title: '404', message: '抱歉，您访问的页面不存在' }
+  }
+
+  if (status >= 500) {
+    return { title: String(status), message: '服务器暂时不可用，请稍后重试' }
+  }
+
+  return { title: String(status), message: fallback }
+}
 
 export function RouteErrorPage() {
   const error = useRouteError()
@@ -10,13 +31,13 @@ export function RouteErrorPage() {
   let message = '发生了未知错误'
 
   if (isRouteErrorResponse(error)) {
-    if (error.status === 404) {
-      title = '404'
-      message = '抱歉，您访问的页面不存在'
-    } else {
-      title = String(error.status)
-      message = error.statusText || '请求出错'
-    }
+    const copy = getRouteErrorCopy(error.status, error.statusText || '请求出错')
+    title = copy.title
+    message = copy.message
+  } else if (error instanceof ApiError) {
+    const copy = getRouteErrorCopy(error.status, error.message)
+    title = copy.title
+    message = copy.message
   } else if (error instanceof Error) {
     message = error.message
   }

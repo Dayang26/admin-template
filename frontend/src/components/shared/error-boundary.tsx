@@ -2,6 +2,7 @@ import { Component, type ErrorInfo, type ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { AlertTriangle } from 'lucide-react'
+import { getApiErrorMessage } from '@/lib/utils/api-error'
 
 interface Props {
   children: ReactNode
@@ -46,7 +47,7 @@ export class ErrorBoundary extends Component<Props, State> {
             </CardHeader>
             <CardContent className="space-y-4 text-center">
               <p className="text-sm text-muted-foreground">
-                {this.state.error?.message ?? '发生了未知错误'}
+                {getApiErrorMessage(this.state.error, '发生了未知错误')}
               </p>
               <div className="flex justify-center gap-2">
                 <Button onClick={this.handleReset}>重试</Button>

@@ -8,6 +8,7 @@ import { getDefaultRoute } from '@/lib/auth/routes'
 import { login as loginApi } from '@/lib/api/auth'
 import { loginFormSchema, type LoginFormValues } from '@/lib/schemas/login'
 import { useSystemSettingsContext } from '@/lib/system-settings/context'
+import { showApiError } from '@/lib/utils/api-error'
 
 import {
   Card,
@@ -57,25 +58,7 @@ export function LoginPage() {
       }
     } catch (err: unknown) {
       console.error('登录失败:', err)
-
-      let message: string
-      if (err instanceof TypeError && err.message.includes('fetch')) {
-        message = '登录失败，请检查网络连接'
-      } else if (err instanceof Error) {
-        // 将常见英文错误信息转为中文
-        const msg = err.message
-        if (/incorrect|wrong|invalid.*password/i.test(msg)) {
-          message = '邮箱或密码错误'
-        } else if (/inactive/i.test(msg)) {
-          message = '该账号已被禁用'
-        } else {
-          message = msg || '登录失败，请检查账号密码'
-        }
-      } else {
-        message = '登录失败，请检查账号密码'
-      }
-
-      toast.error(message)
+      showApiError(err, '登录失败，请检查账号密码')
     } finally {
       setSubmitting(false)
     }

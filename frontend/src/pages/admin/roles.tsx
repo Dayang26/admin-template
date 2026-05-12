@@ -31,6 +31,7 @@ import {
   getResourceLabel,
   getActionLabel,
 } from '@/lib/utils/permission-labels'
+import { showApiError } from '@/lib/utils/api-error'
 import type { RoleItem } from '@/lib/types/role'
 
 export function RolesPage() {
@@ -68,7 +69,7 @@ export function RolesPage() {
           setNewName('')
           setNewDesc('')
         },
-        onError: (err) => toast.error(err instanceof Error ? err.message : '创建失败'),
+        onError: (err) => showApiError(err, '创建失败'),
       },
     )
   }
@@ -82,7 +83,7 @@ export function RolesPage() {
           toast.success('角色已更新')
           setEditRole(null)
         },
-        onError: (err) => toast.error(err instanceof Error ? err.message : '更新失败'),
+        onError: (err) => showApiError(err, '更新失败'),
       },
     )
   }
@@ -94,7 +95,7 @@ export function RolesPage() {
         toast.success('角色已删除')
         setDeleteRole(null)
       },
-      onError: (err) => toast.error(err instanceof Error ? err.message : '删除失败'),
+      onError: (err) => showApiError(err, '删除失败'),
     })
   }
 
@@ -124,7 +125,7 @@ export function RolesPage() {
           toast.success('权限已更新')
           setPermsRole(null)
         },
-        onError: (err) => toast.error(err instanceof Error ? err.message : '更新失败'),
+        onError: (err) => showApiError(err, '更新失败'),
       },
     )
   }

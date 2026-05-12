@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { useAuth } from '@/lib/auth/context'
 import { changePassword, removeMyAvatar, updateMe, uploadMyAvatar } from '@/lib/api/me'
+import { showApiError, showFormApiError } from '@/lib/utils/api-error'
 import { getRoleLabel } from '@/lib/utils/role-labels'
 import { getUserInitials } from '@/lib/utils/user-avatar'
 
@@ -81,7 +82,7 @@ export function ProfilePage() {
           setNameSubmitting(false)
         },
         onError: (err) => {
-          toast.error(err instanceof Error ? err.message : '更新失败')
+          showFormApiError(err, nameForm.setError, '更新失败')
           setNameSubmitting(false)
         },
       },
@@ -95,7 +96,7 @@ export function ProfilePage() {
         toast.success('头像已更新')
       },
       onError: (err) => {
-        toast.error(err instanceof Error ? err.message : '头像上传失败')
+        showApiError(err, '头像上传失败')
       },
       onSettled: () => {
         if (avatarInputRef.current) {
@@ -112,7 +113,7 @@ export function ProfilePage() {
         toast.success('头像已移除')
       },
       onError: (err) => {
-        toast.error(err instanceof Error ? err.message : '头像移除失败')
+        showApiError(err, '头像移除失败')
       },
     })
   }
@@ -128,7 +129,7 @@ export function ProfilePage() {
           setPwdSubmitting(false)
         },
         onError: (err) => {
-          toast.error(err instanceof Error ? err.message : '修改失败')
+          showFormApiError(err, pwdForm.setError, '修改失败')
           setPwdSubmitting(false)
         },
       },

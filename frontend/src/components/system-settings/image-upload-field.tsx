@@ -3,6 +3,7 @@ import { useUploadFile } from '@/lib/hooks/use-upload'
 import { Button } from '@/components/ui/button'
 import { Upload, X, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { showApiError } from '@/lib/utils/api-error'
 
 interface ImageUploadFieldProps {
   label: string
@@ -33,8 +34,7 @@ export function ImageUploadField({ label, description, purpose, value, onChange,
       onChange({ file_id: result.id, url: result.public_url })
       toast.success('上传成功')
     } catch (error) {
-      const err = error as Error
-      toast.error(err.message || '上传失败')
+      showApiError(error, '上传失败')
     } finally {
       if (inputRef.current) inputRef.current.value = ''
     }

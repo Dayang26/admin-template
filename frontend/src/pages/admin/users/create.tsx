@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
@@ -12,6 +12,7 @@ import { PageHeader } from '@/components/shared/page-header'
 import { useCreateUser } from '@/lib/hooks/use-users'
 import { useRoles } from '@/lib/hooks/use-roles'
 import { getRoleLabel } from '@/lib/utils/role-labels'
+import { showFormApiError } from '@/lib/utils/api-error'
 
 const createUserSchema = z.object({
   email: z.string().min(1, '请输入邮箱').email('请输入有效的邮箱地址'),
@@ -34,8 +35,9 @@ export function UserCreatePage() {
   const {
     register,
     handleSubmit,
+    setError,
     setValue,
-    watch,
+    control,
     formState: { errors },
   } = useForm<CreateUserForm>({
     resolver: zodResolver(createUserSchema),
@@ -47,7 +49,7 @@ export function UserCreatePage() {
     },
   })
 
-  const selectedRoles = watch('roles')
+  const selectedRoles = useWatch({ control, name: 'roles' })
 
   function toggleRole(role: string) {
     const current = selectedRoles || []
@@ -73,7 +75,7 @@ export function UserCreatePage() {
           navigate('/admin/users')
         },
         onError: (err) => {
-          toast.error(err instanceof Error ? err.message : '创建失败')
+          showFormApiError(err, setError, '创建失败')
           setSubmitting(false)
         },
       },

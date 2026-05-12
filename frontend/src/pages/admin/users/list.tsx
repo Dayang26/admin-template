@@ -26,6 +26,7 @@ import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { useUsers, useDeleteUser } from '@/lib/hooks/use-users'
 import { useRoles } from '@/lib/hooks/use-roles'
 import { getRoleLabel } from '@/lib/utils/role-labels'
+import { showApiError } from '@/lib/utils/api-error'
 
 export function UserListPage() {
   const navigate = useNavigate()
@@ -52,7 +53,7 @@ export function UserListPage() {
         setDeleteId(null)
       },
       onError: (err) => {
-        toast.error(err instanceof Error ? err.message : '删除失败')
+        showApiError(err, '删除失败')
       },
     })
   }

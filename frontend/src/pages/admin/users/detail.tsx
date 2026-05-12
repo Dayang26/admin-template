@@ -23,6 +23,7 @@ import { PageHeader } from '@/components/shared/page-header'
 import { useResetUserPassword, useUserDetail, useUpdateUser } from '@/lib/hooks/use-users'
 import { useRoles } from '@/lib/hooks/use-roles'
 import { getRoleLabel } from '@/lib/utils/role-labels'
+import { showFormApiError } from '@/lib/utils/api-error'
 
 const updateUserSchema = z.object({
   full_name: z.string().optional(),
@@ -60,6 +61,7 @@ export function UserDetailPage() {
     register,
     handleSubmit,
     setValue,
+    setError,
     reset,
     control,
     formState: { errors, isDirty },
@@ -77,6 +79,7 @@ export function UserDetailPage() {
   const {
     register: registerResetPassword,
     handleSubmit: handleResetPasswordSubmit,
+    setError: setResetPasswordError,
     reset: resetResetPassword,
     formState: { errors: resetPasswordErrors },
   } = useForm<ResetPasswordForm>({
@@ -118,7 +121,7 @@ export function UserDetailPage() {
           setSubmitting(false)
         },
         onError: (err) => {
-          toast.error(err instanceof Error ? err.message : '更新失败')
+          showFormApiError(err, setError, '更新失败')
           setSubmitting(false)
         },
       },
@@ -141,7 +144,7 @@ export function UserDetailPage() {
           setResetPasswordOpen(false)
         },
         onError: (err) => {
-          toast.error(err instanceof Error ? err.message : '重置失败')
+          showFormApiError(err, setResetPasswordError, '重置失败')
         },
       },
     )

@@ -22,6 +22,7 @@ import { Separator } from '@/components/ui/separator'
 import { useAuth } from '@/lib/auth/context'
 import { useAdminSystemSettings, useUpdateSystemSettings } from '@/lib/hooks/use-system-settings'
 import type { SystemSettingUpdatePayload } from '@/lib/types/system-setting'
+import { showFormApiError } from '@/lib/utils/api-error'
 
 const formSchema = z.object({
   system_name: z.string().min(1, '系统名称不能为空').max(100),
@@ -131,8 +132,7 @@ export function SystemSettingsPage() {
       await updateSettings(payload)
       toast.success('系统设置已保存')
     } catch (error) {
-      const err = error as Error
-      toast.error(err.message || '保存失败')
+      showFormApiError(error, form.setError, '保存失败')
     }
   }
 
