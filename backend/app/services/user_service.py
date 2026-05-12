@@ -281,6 +281,13 @@ def delete_user(*, session: Session, target_user_id: uuid.UUID, current_user_id:
             detail="Cannot delete other superusers",
         )
 
+    avatar_file_id = target_user.avatar_file_id
+    if avatar_file_id is not None:
+        target_user.avatar_file_id = None
+        session.add(target_user)
+        session.flush()
+        _cleanup_avatar_upload(session=session, upload_file_id=avatar_file_id, owner_id=target_user_id)
+
     # 删除角色关联
     statement = select(UserRole).where(UserRole.user_id == target_user_id)
     user_roles = session.exec(statement).all()

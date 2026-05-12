@@ -212,7 +212,7 @@ export function ProfilePage() {
               </div>
 
               <p className="text-xs text-muted-foreground">
-                支持 PNG、JPG、WEBP、ICO，文件大小不超过 2MB。
+                支持 PNG、JPG、WEBP、ICO，文件大小不超过 5MB。
               </p>
             </div>
           </div>

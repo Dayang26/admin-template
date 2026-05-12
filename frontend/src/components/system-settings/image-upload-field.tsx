@@ -106,7 +106,7 @@ export function ImageUploadField({ label, description, purpose, value, onChange,
               </Button>
             )}
           </div>
-          <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-medium">支持 PNG, JPG, WEBP, ICO (Max 2MB)</p>
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-medium">支持 PNG, JPG, WEBP, ICO (Max 5MB)</p>
         </div>
       </div>
     </div>
