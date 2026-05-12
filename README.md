@@ -100,6 +100,7 @@ docker compose -f docker/docker-compose.yml up -d --build
 
 - **项目架构与原理**：参阅 [Architecture](./docs/architecture.md)（全栈架构总览），或分别参阅 [Backend Architecture](./backend/docs/architecture.md) 与 [Frontend Architecture](./frontend/docs/architecture-frontend.md)。
 - **如何增加新业务模块**：参阅 [RBAC 扩展指南](./docs/rbac-extension-guide.md)。
+- **Docker 部署与数据库运维**：参阅 [Docker 运维指南](./docker/README.md)，包含 PostgreSQL 备份、恢复演练、升级前备份与 Alembic 迁移流程。
 - **本地运维与开发命令**：本项目提供根目录的 `Makefile`，常用命令：
   - `make dev`: 并发启动前后端开发服务器。
   - `make lint`: 运行前后端代码质量检查。
