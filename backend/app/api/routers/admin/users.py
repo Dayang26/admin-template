@@ -16,6 +16,7 @@ from app.schemas import (
     UserCreateByAdminReq,
     UserDetailResp,
     UserPublicResp,
+    UserResetPasswordReq,
     UserUpdateReq,
 )
 from app.schemas.user import UserPublicWithRolesResp
@@ -124,6 +125,37 @@ def update_user_by_admin(
     )
 
     return Response.ok(data=user_service.build_user_public_resp(user))
+
+
+@router.patch(
+    "/{user_id}/password",
+    dependencies=[Depends(require_permission("user", "update"))],
+    response_model=Response[None],
+)
+def reset_user_password_by_admin(
+    *,
+    session: SessionDep,
+    user_id: uuid.UUID,
+    password_in: UserResetPasswordReq,
+    current_user: CurrentUser,
+    audit: AuditInfo,
+) -> Response[None]:
+    """管理员重置用户密码。"""
+    user = user_service.reset_user_password_by_admin(
+        session=session,
+        password_in=password_in,
+        target_user_id=user_id,
+        current_user_id=current_user.id,
+    )
+
+    log_audit(
+        session,
+        action="重置用户密码",
+        detail=f"用户: {user.email}",
+        **audit,
+    )
+
+    return Response.ok(data=None, message="用户密码已重置")
 
 
 @router.get("/{user_id}", dependencies=[Depends(require_permission("user", "read"))], response_model=Response[UserDetailResp])

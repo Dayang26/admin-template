@@ -26,6 +26,10 @@ export interface UserUpdateData {
   roles?: string[] | null
 }
 
+export interface UserResetPasswordData {
+  new_password: string
+}
+
 export async function getUsers(params: UserSearchParams = {}): Promise<PaginatedData<UserPublic>> {
   const searchParams = new URLSearchParams()
   if (params.page) searchParams.set('page', String(params.page))
@@ -52,6 +56,13 @@ export async function createUserByAdmin(data: UserCreateByAdminData): Promise<Us
 
 export async function updateUser(userId: string, data: UserUpdateData): Promise<UserPublic> {
   return apiClient<UserPublic>(`/api/v1/admin/users/${userId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function resetUserPassword(userId: string, data: UserResetPasswordData): Promise<void> {
+  await apiClient<null>(`/api/v1/admin/users/${userId}/password`, {
     method: 'PATCH',
     body: JSON.stringify(data),
   })

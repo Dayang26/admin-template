@@ -1,10 +1,12 @@
 import time
 
 from fastapi.testclient import TestClient
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from app.core.config import settings
-from app.models.db import Role, User
+from app.core.security import verify_password
+from app.models.db import Role, User, UserRole
+from app.models.db.audit_log import AuditLog
 from app.schemas import UserPublicResp
 from tests.conftest import assert_error, assert_success
 
@@ -186,9 +188,7 @@ def test_update_user_by_admin_password(client: TestClient, superuser_token_heade
 
     # Verify password was updated
     session.refresh(user)
-    from app.core.security import verify_password
-
-    assert verify_password("newsecurepassword", user.hashed_password)
+    assert verify_password("newsecurepassword", user.hashed_password)[0]
 
 
 def test_update_user_by_admin_replace_roles(client: TestClient, superuser_token_headers: dict[str, str], session: Session) -> None:  # noqa: ARG001
@@ -388,3 +388,108 @@ def test_update_user_by_admin_partial_update(client: TestClient, superuser_token
 
 
 #### update_user_by_admin #### end
+
+
+#### reset_user_password_by_admin #### start
+def test_reset_user_password_by_admin_success(client: TestClient, superuser_token_headers: dict[str, str], session: Session) -> None:
+    user = User(email="reset_password@example.com", hashed_password="oldpassword", full_name="Reset Target")
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+
+    response = client.patch(
+        f"{settings.API_V1_STR}/admin/users/{user.id}/password",
+        headers=superuser_token_headers,
+        json={"new_password": "newsecurepassword"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["code"] == 200
+    assert body["message"] == "用户密码已重置"
+    assert body["data"] is None
+
+    session.refresh(user)
+    assert verify_password("newsecurepassword", user.hashed_password)[0]
+
+
+def test_reset_user_password_by_admin_logs_audit(client: TestClient, superuser_token_headers: dict[str, str], session: Session) -> None:
+    user = User(email="reset_password_audit@example.com", hashed_password="oldpassword")
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+
+    response = client.patch(
+        f"{settings.API_V1_STR}/admin/users/{user.id}/password",
+        headers=superuser_token_headers,
+        json={"new_password": "newsecurepassword"},
+    )
+
+    assert response.status_code == 200
+
+    log = session.exec(select(AuditLog).where(AuditLog.action == "重置用户密码").order_by(AuditLog.created_at.desc())).first()
+    assert log is not None
+    assert user.email in (log.detail or "")
+    assert log.method == "PATCH"
+    assert log.status_code == 200
+
+
+def test_reset_user_password_by_admin_other_superuser_forbidden(
+    client: TestClient,
+    superuser_token_headers: dict[str, str],
+    session: Session,
+) -> None:
+    role_superuser = session.exec(select(Role).where(Role.name == "superuser")).first()
+    assert role_superuser is not None
+
+    target_user = User(email="reset_target_superuser@example.com", hashed_password="oldpassword", is_active=True)
+    session.add(target_user)
+    session.commit()
+    session.refresh(target_user)
+
+    session.add(UserRole(user_id=target_user.id, role_id=role_superuser.id))
+    session.commit()
+
+    response = client.patch(
+        f"{settings.API_V1_STR}/admin/users/{target_user.id}/password",
+        headers=superuser_token_headers,
+        json={"new_password": "newsecurepassword"},
+    )
+
+    assert_error(response, 403, "Cannot modify information of other superusers")
+    session.refresh(target_user)
+    assert target_user.hashed_password == "oldpassword"
+
+
+def test_reset_user_password_by_admin_normal_user_forbidden(
+    client: TestClient,
+    normal_user_token_headers: dict[str, str],
+    session: Session,
+) -> None:
+    user = User(email="reset_forbidden@example.com", hashed_password="oldpassword")
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+
+    response = client.patch(
+        f"{settings.API_V1_STR}/admin/users/{user.id}/password",
+        headers=normal_user_token_headers,
+        json={"new_password": "newsecurepassword"},
+    )
+
+    assert_error(response, 403)
+
+
+def test_reset_user_password_by_admin_not_found(client: TestClient, superuser_token_headers: dict[str, str]) -> None:
+    import uuid
+
+    response = client.patch(
+        f"{settings.API_V1_STR}/admin/users/{uuid.uuid4()}/password",
+        headers=superuser_token_headers,
+        json={"new_password": "newsecurepassword"},
+    )
+
+    assert_error(response, 404, "User not found")
+
+
+#### reset_user_password_by_admin #### end

@@ -4,10 +4,12 @@ import {
   getUserDetail,
   createUserByAdmin,
   updateUser,
+  resetUserPassword,
   deleteUser,
   type UserSearchParams,
   type UserCreateByAdminData,
   type UserUpdateData,
+  type UserResetPasswordData,
 } from '../api/users'
 
 export function useUsers(params: UserSearchParams = {}) {
@@ -40,6 +42,17 @@ export function useUpdateUser() {
   return useMutation({
     mutationFn: ({ userId, data }: { userId: string; data: UserUpdateData }) =>
       updateUser(userId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] })
+    },
+  })
+}
+
+export function useResetUserPassword() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ userId, data }: { userId: string; data: UserResetPasswordData }) =>
+      resetUserPassword(userId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] })
     },

@@ -60,6 +60,12 @@ class UserUpdatePasswordReq(SQLModel):
     new_password: str = Field(min_length=8, max_length=128)
 
 
+class UserResetPasswordReq(SQLModel):
+    """管理员重置用户密码请求"""
+
+    new_password: str = Field(min_length=8, max_length=128)
+
+
 class UserDetailResp(UserPublicResp):
     """用户详情，包含角色与权限"""
 

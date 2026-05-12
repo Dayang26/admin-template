@@ -14,6 +14,7 @@ from app.schemas.user import (
     UserCreateReq,
     UserDetailResp,
     UserPublicResp,
+    UserResetPasswordReq,
     UserUpdateMeReq,
     UserUpdatePasswordReq,
     UserUpdateReq,
@@ -92,6 +93,21 @@ def create_user_with_roles(*, session: Session, user_create: UserCreateByAdminRe
 SUPERUSER_ROLE_NAME = "superuser"
 
 
+def _get_user_role_names(*, session: Session, user_id: uuid.UUID) -> set[str]:
+    statement = select(Role.name).join(UserRole, UserRole.role_id == Role.id).where(UserRole.user_id == user_id)
+    return set(session.exec(statement).all())
+
+
+def _ensure_can_modify_target_user(*, session: Session, target_user_id: uuid.UUID, current_user_id: uuid.UUID) -> None:
+    target_roles = _get_user_role_names(session=session, user_id=target_user_id)
+
+    if SUPERUSER_ROLE_NAME in target_roles and target_user_id != current_user_id:
+        raise HTTPException(
+            status_code=403,
+            detail="Cannot modify information of other superusers",
+        )
+
+
 def update_user_by_admin(
     *,
     session: Session,
@@ -114,15 +130,7 @@ def update_user_by_admin(
         raise HTTPException(status_code=404, detail="User not found")
 
     # 2. Check superuser mutual exclusion
-    # Query target user's current roles
-    statement = select(Role.name).join(UserRole, UserRole.role_id == Role.id).where(UserRole.user_id == target_user_id)
-    target_roles = set(session.exec(statement).all())
-
-    if SUPERUSER_ROLE_NAME in target_roles and target_user_id != current_user_id:
-        raise HTTPException(
-            status_code=403,
-            detail="Cannot modify information of other superusers",
-        )
+    _ensure_can_modify_target_user(session=session, target_user_id=target_user_id, current_user_id=current_user_id)
 
     # 3. Update basic fields
     update_data = user_update.model_dump(exclude_unset=True, exclude={"password", "roles"})
@@ -162,6 +170,26 @@ def update_user_by_admin(
             if role.id not in existing_role_ids:
                 session.add(UserRole(user_id=target_user_id, role_id=role.id))
 
+    session.add(target_user)
+    session.commit()
+    session.refresh(target_user)
+    return target_user
+
+
+def reset_user_password_by_admin(
+    *,
+    session: Session,
+    password_in: UserResetPasswordReq,
+    target_user_id: uuid.UUID,
+    current_user_id: uuid.UUID,
+) -> User:
+    target_user = session.get(User, target_user_id)
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    _ensure_can_modify_target_user(session=session, target_user_id=target_user_id, current_user_id=current_user_id)
+
+    target_user.hashed_password = get_password_hash(password_in.new_password)
     session.add(target_user)
     session.commit()
     session.refresh(target_user)
