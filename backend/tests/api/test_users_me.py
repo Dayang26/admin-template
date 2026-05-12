@@ -75,6 +75,31 @@ def test_read_user_me_success(client: TestClient, normal_user_token_headers: dic
     assert "permissions" in data
 
 
+def test_read_user_me_rejects_token_after_admin_disables_user(
+    client: TestClient,
+    normal_user_token_headers: dict[str, str],
+    superuser_token_headers: dict[str, str],
+    session: Session,
+) -> None:
+    """A token issued before the user is disabled must stop working."""
+    current_user = session.exec(select(User).where(User.email == "normal@example.com")).first()
+    assert current_user is not None
+
+    disable_response = client.patch(
+        f"{settings.API_V1_STR}/admin/users/{current_user.id}",
+        headers=superuser_token_headers,
+        json={"is_active": False},
+    )
+    assert_success(disable_response)
+
+    response = client.get(
+        f"{settings.API_V1_STR}/users/me",
+        headers=normal_user_token_headers,
+    )
+
+    assert_error(response, 403, "该账号已被禁用")
+
+
 def test_upload_user_avatar_success(
     client: TestClient,
     normal_user_token_headers: dict[str, str],
