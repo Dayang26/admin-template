@@ -1,10 +1,16 @@
 .PHONY: dev dev-backend dev-frontend test test-backend lint lint-backend lint-frontend build-frontend check db-upgrade db-revision
 
+include .env
+export
+
+BACKEND_PORT ?= 8000
+FRONTEND_PORT ?= 5173
+
 dev-backend:
-	cd backend && uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+	cd backend && uv run uvicorn app.main:app --reload --host 0.0.0.0 --port $(BACKEND_PORT)
 
 dev-frontend:
-	cd frontend && pnpm dev
+	cd frontend && VITE_BACKEND_PORT=$(BACKEND_PORT) pnpm dev --port $(FRONTEND_PORT)
 
 # 使用 make -j2 并发运行前后端
 dev:
