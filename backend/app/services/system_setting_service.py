@@ -10,6 +10,7 @@ from app.schemas.system_setting import (
     SystemSettingPublicResp,
     SystemSettingUpdateReq,
 )
+from app.services import upload_service
 
 
 def get_or_create_system_setting(session: Session) -> SystemSetting:
@@ -91,6 +92,11 @@ def update_system_setting(
         "favicon_file_id": "Favicon",
         "login_background_file_id": "登录页背景图",
     }
+    previous_file_ids = {
+        field_id: getattr(setting, field_id)
+        for field_id in file_fields
+        if field_id in update_data
+    }
     for field_id, field_name in file_fields.items():
         val = update_data.get(field_id)
         if val is not None:
@@ -103,6 +109,11 @@ def update_system_setting(
     session.add(setting)
     session.commit()
     session.refresh(setting)
+
+    for field_id, previous_file_id in previous_file_ids.items():
+        next_file_id = getattr(setting, field_id)
+        if previous_file_id and previous_file_id != next_file_id:
+            upload_service.cleanup_upload_file_if_unreferenced(session=session, upload_file_id=previous_file_id)
 
     changes = list(update_data.keys())
     log_audit(

@@ -318,3 +318,73 @@ def test_deleting_uploader_keeps_upload_record_and_clears_created_by(
     upload_record = session.get(UploadFile, upload_data["id"])
     assert upload_record is not None
     assert upload_record.created_by_id is None
+
+
+def test_cleanup_orphan_uploads_requires_delete_permission(
+    client: TestClient,
+    normal_user_token_headers: dict[str, str],
+) -> None:
+    response = client.delete(
+        f"{settings.API_V1_STR}/uploads/orphans?min_age_minutes=0",
+        headers=normal_user_token_headers,
+    )
+
+    assert response.status_code == 403
+
+
+def test_cleanup_orphan_uploads_deletes_unreferenced_upload(
+    client: TestClient,
+    session: Session,
+    superuser_token_headers: dict[str, str],
+    tmp_path: Path,
+) -> None:
+    upload_response = client.post(
+        f"{settings.API_V1_STR}/uploads",
+        headers=superuser_token_headers,
+        files={"file": ("orphan.png", _png_content(), "image/png")},
+        data={"file_type": "image", "visibility": "public", "purpose": "system_setting_logo"},
+    )
+    upload_data = assert_success(upload_response, 201)
+    upload_path = tmp_path / "public" / upload_data["storage_key"]
+    assert upload_path.exists()
+
+    cleanup_response = client.delete(
+        f"{settings.API_V1_STR}/uploads/orphans?min_age_minutes=0",
+        headers=superuser_token_headers,
+    )
+    cleanup_data = assert_success(cleanup_response, 200)
+
+    assert cleanup_data["deleted_count"] == 1
+    assert cleanup_data["deleted_file_ids"] == [upload_data["id"]]
+    assert session.get(UploadFile, upload_data["id"]) is None
+    assert not upload_path.exists()
+
+
+def test_cleanup_orphan_uploads_keeps_referenced_upload(
+    client: TestClient,
+    session: Session,
+    superuser_token_headers: dict[str, str],
+) -> None:
+    upload_response = client.post(
+        f"{settings.API_V1_STR}/uploads",
+        headers=superuser_token_headers,
+        files={"file": ("referenced.png", _png_content(), "image/png")},
+        data={"file_type": "image", "visibility": "public", "purpose": "system_setting_logo"},
+    )
+    upload_data = assert_success(upload_response, 201)
+
+    bind_response = client.patch(
+        f"{settings.API_V1_STR}/admin/system-settings",
+        headers=superuser_token_headers,
+        json={"logo_light_file_id": upload_data["id"]},
+    )
+    assert_success(bind_response, 200)
+
+    cleanup_response = client.delete(
+        f"{settings.API_V1_STR}/uploads/orphans?min_age_minutes=0",
+        headers=superuser_token_headers,
+    )
+    cleanup_data = assert_success(cleanup_response, 200)
+
+    assert cleanup_data["deleted_count"] == 0
+    assert session.get(UploadFile, upload_data["id"]) is not None

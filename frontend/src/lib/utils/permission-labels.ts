@@ -7,6 +7,7 @@ export const RESOURCE_LABELS: Record<string, string> = {
   audit_log: '审计日志',
   dashboard: '仪表盘',
   system_setting: '系统设置',
+  upload: '上传文件',
 }
 
 /** 操作名到中文标签的映射 */

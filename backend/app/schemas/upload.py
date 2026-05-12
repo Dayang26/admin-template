@@ -26,3 +26,8 @@ class UploadFileResp(SQLModel):
     public_url: str | None
     purpose: str | None
     created_at: datetime
+
+
+class UploadCleanupResp(SQLModel):
+    deleted_count: int
+    deleted_file_ids: list[uuid.UUID]

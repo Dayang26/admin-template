@@ -1,13 +1,15 @@
 import logging
 import uuid
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 from fastapi import HTTPException
 from fastapi import UploadFile as FastAPIUploadFile
-from sqlmodel import Session
+from sqlalchemy import or_
+from sqlmodel import Session, select
 
 from app.core.config import settings
-from app.models.db import UploadFile
+from app.models.db import SystemSetting, UploadFile, User
 from app.schemas.upload import UploadFileResp, UploadFileType, UploadVisibility
 from app.services.storage.local import LocalStorageProvider
 
@@ -156,3 +158,55 @@ def delete_upload_file(session: Session, upload_file: UploadFile) -> None:
     )
     session.delete(upload_file)
     session.commit()
+
+
+def is_upload_file_referenced(session: Session, upload_file_id: uuid.UUID) -> bool:
+    user_ref = session.exec(select(User.id).where(User.avatar_file_id == upload_file_id)).first()
+    if user_ref is not None:
+        return True
+
+    system_setting_ref = session.exec(
+        select(SystemSetting.id).where(
+            or_(
+                SystemSetting.logo_light_file_id == upload_file_id,
+                SystemSetting.logo_dark_file_id == upload_file_id,
+                SystemSetting.favicon_file_id == upload_file_id,
+                SystemSetting.login_background_file_id == upload_file_id,
+            )
+        )
+    ).first()
+    return system_setting_ref is not None
+
+
+def delete_upload_file_if_unreferenced(session: Session, upload_file_id: uuid.UUID) -> bool:
+    upload_file = session.get(UploadFile, upload_file_id)
+    if not upload_file or is_upload_file_referenced(session, upload_file_id):
+        return False
+
+    delete_upload_file(session=session, upload_file=upload_file)
+    return True
+
+
+def cleanup_upload_file_if_unreferenced(session: Session, upload_file_id: uuid.UUID) -> bool:
+    try:
+        return delete_upload_file_if_unreferenced(session=session, upload_file_id=upload_file_id)
+    except Exception:
+        session.rollback()
+        logger.exception("Failed to cleanup unreferenced upload file: %s", upload_file_id)
+        return False
+
+
+def delete_unreferenced_upload_files(session: Session, *, min_age_minutes: int) -> list[uuid.UUID]:
+    cutoff = datetime.now(UTC) - timedelta(minutes=min_age_minutes)
+    candidates = session.exec(select(UploadFile).where(UploadFile.created_at <= cutoff)).all()
+
+    deleted_file_ids: list[uuid.UUID] = []
+    for upload_file in candidates:
+        if is_upload_file_referenced(session, upload_file.id):
+            continue
+
+        upload_file_id = upload_file.id
+        delete_upload_file(session=session, upload_file=upload_file)
+        deleted_file_ids.append(upload_file_id)
+
+    return deleted_file_ids

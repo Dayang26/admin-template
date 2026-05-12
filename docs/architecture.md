@@ -281,6 +281,7 @@ t_upload_file ──────────────────────
 - `GET /api/v1/admin/system-settings` - 获取系统设置
 - `PATCH /api/v1/admin/system-settings` - 更新系统设置
 - `POST /api/v1/uploads` - 通用图片上传（系统设置素材）
+- `DELETE /api/v1/uploads/orphans` - 清理未被引用的上传文件
 
 ### 4.5 统一响应结构
 
@@ -480,9 +481,9 @@ if (hasPermission('user:delete')) {
 | user | create/read/update/delete | 用户管理 |
 | role | create/read/update/delete | 角色管理 |
 | audit_log | read | 审计日志查看 |
-| system_setting | read/update | 系统设置 |
+| system_setting | read/update_system_name/update_tagline/update_copyright/update_page_title_template/upload_logo/upload_favicon/upload_login_background | 系统设置 |
 | dashboard | read | 仪表盘 |
-| upload | create/read/delete | 文件上传 |
+| upload | delete | 清理未被引用的上传文件 |
 
 ### 6.2 内置角色
 
@@ -607,6 +608,10 @@ make dev
 
 - `.env` 文件不提交到版本控制
 - 上传文件验证扩展名、MIME 类型、文件签名、大小
+- 上传文件生命周期：
+  - 用户头像在替换、移除或删除用户时，会删除旧的头像上传记录和本地文件。
+  - 系统设置图片在保存新文件引用后，会删除被替换且不再被任何用户头像或系统设置字段引用的旧文件。
+  - 管理员可调用 `DELETE /api/v1/uploads/orphans` 清理未被用户头像或系统设置图片引用、且超过 `min_age_minutes` 保留窗口的孤儿上传文件；默认保留 60 分钟，避免删除刚上传但尚未保存到系统设置的素材。
 - 敏感操作记录审计日志
 - 不在数据库中存储云服务商密钥
 - JWT Secret 使用强随机密钥

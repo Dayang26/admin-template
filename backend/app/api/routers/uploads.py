@@ -1,15 +1,15 @@
 from enum import Enum
 from typing import Annotated
 
-from fastapi import APIRouter, File, Form, HTTPException
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query
 from fastapi import UploadFile as FastAPIUploadFile
 
-from app.deps.audit import AuditInfo
+from app.deps.audit import AuditInfo, log_audit
 from app.deps.auth import CurrentUser
 from app.deps.db import SessionDep
 from app.deps.permission import require_permission
 from app.schemas import Response
-from app.schemas.upload import UploadFileResp, UploadFileType, UploadVisibility
+from app.schemas.upload import UploadCleanupResp, UploadFileResp, UploadFileType, UploadVisibility
 from app.services import upload_service
 
 router = APIRouter(prefix="/uploads", tags=["uploads"])
@@ -76,3 +76,39 @@ def upload_file(
         audit_info=audit_info,
     )
     return Response.ok(data=result, code=201)
+
+
+@router.delete(
+    "/orphans",
+    dependencies=[Depends(require_permission("upload", "delete"))],
+    response_model=Response[UploadCleanupResp],
+    summary="清理孤儿上传文件",
+    description="删除未被用户头像或系统设置图片引用，且创建时间早于指定分钟数的上传文件记录及本地文件。",
+)
+def cleanup_orphan_uploads(
+    session: SessionDep,
+    audit_info: AuditInfo,
+    min_age_minutes: Annotated[int, Query(ge=0, le=60 * 24 * 30, description="只清理至少创建这么多分钟的孤儿文件。")] = 60,
+) -> Response[UploadCleanupResp]:
+    deleted_file_ids = upload_service.delete_unreferenced_upload_files(
+        session=session,
+        min_age_minutes=min_age_minutes,
+    )
+    log_audit(
+        session=session,
+        action="清理孤儿上传文件",
+        detail=f"删除数量: {len(deleted_file_ids)}",
+        resource_type="upload_file",
+        resource_id="orphans",
+        changes={
+            "deleted_file_ids": deleted_file_ids,
+            "min_age_minutes": min_age_minutes,
+        },
+        **audit_info,
+    )
+    return Response.ok(
+        data=UploadCleanupResp(
+            deleted_count=len(deleted_file_ids),
+            deleted_file_ids=deleted_file_ids,
+        )
+    )
