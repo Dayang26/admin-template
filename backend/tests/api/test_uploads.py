@@ -388,3 +388,59 @@ def test_cleanup_orphan_uploads_keeps_referenced_upload(
 
     assert cleanup_data["deleted_count"] == 0
     assert session.get(UploadFile, upload_data["id"]) is not None
+
+
+def test_cleanup_orphan_uploads_respects_min_age_minutes(
+    client: TestClient,
+    session: Session,
+    superuser_token_headers: dict[str, str],
+    tmp_path: Path,
+) -> None:
+    """刚上传的文件不应该被默认 min_age_minutes=60 清理掉。"""
+    upload_response = client.post(
+        f"{settings.API_V1_STR}/uploads",
+        headers=superuser_token_headers,
+        files={"file": ("recent.png", _png_content(), "image/png")},
+        data={"file_type": "image", "visibility": "public", "purpose": "system_setting_logo"},
+    )
+    upload_data = assert_success(upload_response, 201)
+    upload_path = tmp_path / "public" / upload_data["storage_key"]
+    assert upload_path.exists()
+
+    # 使用默认 min_age_minutes=60，刚上传的文件不应被清理
+    cleanup_response = client.delete(
+        f"{settings.API_V1_STR}/uploads/orphans",
+        headers=superuser_token_headers,
+    )
+    cleanup_data = assert_success(cleanup_response, 200)
+
+    assert cleanup_data["deleted_count"] == 0
+    assert session.get(UploadFile, upload_data["id"]) is not None
+    assert upload_path.exists()
+
+
+def test_cleanup_orphan_uploads_keeps_user_avatar_upload(
+    client: TestClient,
+    session: Session,
+    superuser_token_headers: dict[str, str],
+) -> None:
+    """绑定为用户头像的上传文件不应被孤儿清理删除。"""
+    # 上传一张图作为头像
+    avatar_response = client.post(
+        f"{settings.API_V1_STR}/users/me/avatar",
+        headers=superuser_token_headers,
+        files={"file": ("avatar.png", _png_content(), "image/png")},
+    )
+    avatar_data = assert_success(avatar_response, 200)
+    avatar_file_id = avatar_data.get("avatar_file_id")
+    assert avatar_file_id is not None
+
+    # 清理孤儿
+    cleanup_response = client.delete(
+        f"{settings.API_V1_STR}/uploads/orphans?min_age_minutes=0",
+        headers=superuser_token_headers,
+    )
+    cleanup_data = assert_success(cleanup_response, 200)
+
+    assert cleanup_data["deleted_count"] == 0
+    assert session.get(UploadFile, avatar_file_id) is not None

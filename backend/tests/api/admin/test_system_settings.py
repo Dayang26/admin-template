@@ -199,3 +199,35 @@ def test_replacing_system_setting_image_keeps_upload_referenced_by_another_field
 
     assert session.get(UploadFile, uuid.UUID(shared_upload["id"])) is not None
     assert session.get(UploadFile, uuid.UUID(replacement_upload["id"])) is not None
+
+
+def test_setting_image_to_null_cleans_previous_upload(
+    client: TestClient,
+    session: Session,
+    superuser_token_headers: dict[str, str],
+    tmp_path: Path,
+) -> None:
+    """将系统设置图片字段设为 null（移除 logo）应该清理旧的上传文件。"""
+    upload = _upload_system_logo(client, superuser_token_headers, "to-remove.png")
+    upload_path = tmp_path / "public" / upload["storage_key"]
+
+    # 绑定到 logo_light
+    bind_response = client.patch(
+        f"{settings.API_V1_STR}/admin/system-settings",
+        headers=superuser_token_headers,
+        json={"logo_light_file_id": upload["id"]},
+    )
+    assert_success(bind_response, 200)
+    assert upload_path.exists()
+
+    # 设为 null
+    unbind_response = client.patch(
+        f"{settings.API_V1_STR}/admin/system-settings",
+        headers=superuser_token_headers,
+        json={"logo_light_file_id": None},
+    )
+    data = assert_success(unbind_response, 200)
+
+    assert data["logo_light_file_id"] is None
+    assert session.get(UploadFile, uuid.UUID(upload["id"])) is None
+    assert not upload_path.exists()

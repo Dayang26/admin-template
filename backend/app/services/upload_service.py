@@ -152,12 +152,14 @@ def process_upload(
 
 
 def delete_upload_file(session: Session, upload_file: UploadFile) -> None:
-    storage_provider.delete(
-        visibility=upload_file.visibility,
-        storage_key=upload_file.storage_key,
-    )
+    visibility = upload_file.visibility
+    storage_key = upload_file.storage_key
     session.delete(upload_file)
     session.commit()
+    try:
+        storage_provider.delete(visibility=visibility, storage_key=storage_key)
+    except Exception:
+        logger.warning("DB record deleted but failed to remove physical file: %s", storage_key, exc_info=True)
 
 
 def is_upload_file_referenced(session: Session, upload_file_id: uuid.UUID) -> bool:
@@ -206,7 +208,11 @@ def delete_unreferenced_upload_files(session: Session, *, min_age_minutes: int) 
             continue
 
         upload_file_id = upload_file.id
-        delete_upload_file(session=session, upload_file=upload_file)
-        deleted_file_ids.append(upload_file_id)
+        try:
+            delete_upload_file(session=session, upload_file=upload_file)
+            deleted_file_ids.append(upload_file_id)
+        except Exception:
+            session.rollback()
+            logger.exception("Failed to delete orphan upload file: %s", upload_file_id)
 
     return deleted_file_ids
