@@ -74,6 +74,7 @@ class Settings(BaseSettings):
     UPLOAD_PUBLIC_URL_PREFIX: str = "/uploads/public"
     UPLOAD_MAX_IMAGE_SIZE_MB: int = 5
     UPLOAD_ALLOWED_IMAGE_EXTENSIONS: str = "png,jpg,jpeg,webp,ico"
+    UPLOAD_CLEANUP_MIN_AGE_MINUTES: int = 60
 
     def _check_default_secret(self, var_name: str, value: str | None) -> None:
         if value == "changethis":

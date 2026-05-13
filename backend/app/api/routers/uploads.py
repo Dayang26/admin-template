@@ -4,6 +4,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query
 from fastapi import UploadFile as FastAPIUploadFile
 
+from app.core.config import settings
 from app.deps.audit import AuditInfo, log_audit
 from app.deps.auth import CurrentUser
 from app.deps.db import SessionDep
@@ -88,7 +89,7 @@ def upload_file(
 def cleanup_orphan_uploads(
     session: SessionDep,
     audit_info: AuditInfo,
-    min_age_minutes: Annotated[int, Query(ge=0, le=60 * 24 * 30, description="只清理至少创建这么多分钟的孤儿文件。")] = 60,
+    min_age_minutes: Annotated[int, Query(ge=0, le=60 * 24 * 30, description="只清理至少创建这么多分钟的孤儿文件。")] = settings.UPLOAD_CLEANUP_MIN_AGE_MINUTES,
 ) -> Response[UploadCleanupResp]:
     deleted_file_ids = upload_service.delete_unreferenced_upload_files(
         session=session,
